@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <title>PolyLingo</title>
+  <!-- The faceted speech bubble combines “Poly” (many sides) with “Lingo”. -->
+  <path fill="none" stroke="#c5c5c5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M6 2.8h12l3.2 3.4v9.1L18 18.7h-5.2L7 22v-3.3H6l-3.2-3.4V6.2L6 2.8Z"/>
+  <!-- Geometric PL monogram keeps the mark identifiable among translators. -->
+  <path fill="none" stroke="#c5c5c5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M7 15V6.8h3.2a2.4 2.4 0 0 1 0 4.8H7m7-4.8V15h4"/>
+</svg>

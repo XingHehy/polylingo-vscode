@@ -1,0 +1,627 @@
+{
+  "name": "poly-lingo",
+  "displayName": "PolyLingo",
+  "description": "%extension.description%",
+  "version": "0.1.0",
+  "publisher": "xinghehy",
+  "license": "MIT",
+  "engines": {
+    "vscode": ">=1.65.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "translate",
+    "translation",
+    "translator",
+    "terminal",
+    "documentation",
+    "AI",
+    "Google",
+    "Bing",
+    "DeepL",
+    "OpenAI",
+    "Ollama",
+    "developer"
+  ],
+  "activationEvents": [
+    "onCommand:polyLingo.translateSelection",
+    "onCommand:polyLingo.translateAndReplaceSelection",
+    "onCommand:polyLingo.translateDocument",
+    "onCommand:polyLingo.translateDocumentInPlace",
+    "onCommand:polyLingo.translateTerminalSelection",
+    "onCommand:polyLingo.translateClipboard",
+    "onCommand:polyLingo.explainSelection",
+    "onCommand:polyLingo.explainTerminalSelection",
+    "onCommand:polyLingo.selectProvider",
+    "onCommand:polyLingo.selectTargetLanguage",
+    "onCommand:polyLingo.selectInterfaceLanguage",
+    "onCommand:polyLingo.manageCredentials",
+    "onCommand:polyLingo.openSettings",
+    "onView:polyLingo.translationView",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "package": "npm run typecheck && npm run compile && vsce package --allow-missing-repository",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "https-proxy-agent": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^16.18.126",
+    "@types/vscode": "1.65.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "polyLingo",
+          "title": "PolyLingo",
+          "icon": "resources/polylingo.svg"
+        }
+      ]
+    },
+    "views": {
+      "polyLingo": [
+        {
+          "type": "webview",
+          "id": "polyLingo.translationView",
+          "name": "%view.translation%",
+          "contextualTitle": "PolyLingo",
+          "icon": "resources/polylingo.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "polyLingo.translateSelection",
+        "title": "%command.translateSelection%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.translateAndReplaceSelection",
+        "title": "%command.translateAndReplaceSelection%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.translateDocument",
+        "title": "%command.translateDocument%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.translateDocumentInPlace",
+        "title": "%command.translateDocumentInPlace%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.translateTerminalSelection",
+        "title": "%command.translateTerminalSelection%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.translateClipboard",
+        "title": "%command.translateClipboard%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.explainSelection",
+        "title": "%command.explainSelection%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.explainTerminalSelection",
+        "title": "%command.explainTerminalSelection%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.selectProvider",
+        "title": "%command.selectProvider%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.selectTargetLanguage",
+        "title": "%command.selectTargetLanguage%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.selectInterfaceLanguage",
+        "title": "%command.selectInterfaceLanguage%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.manageCredentials",
+        "title": "%command.manageCredentials%",
+        "category": "PolyLingo"
+      },
+      {
+        "command": "polyLingo.openSettings",
+        "title": "%command.openSettings%",
+        "category": "PolyLingo"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "polyLingo.editorContextMenu",
+          "group": "polyLingo@100"
+        }
+      ],
+      "polyLingo.editorContextMenu": [
+        {
+          "command": "polyLingo.translateSelection",
+          "group": "1_selection@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "polyLingo.translateAndReplaceSelection",
+          "group": "1_selection@2",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "polyLingo.explainSelection",
+          "group": "1_selection@3",
+          "when": "editorHasSelection && polyLingo.aiAvailable"
+        },
+        {
+          "command": "polyLingo.translateDocument",
+          "group": "2_document@1"
+        },
+        {
+          "command": "polyLingo.translateDocumentInPlace",
+          "group": "2_document@2"
+        },
+        {
+          "command": "polyLingo.selectProvider",
+          "group": "9_settings@1"
+        },
+        {
+          "command": "polyLingo.selectTargetLanguage",
+          "group": "9_settings@2"
+        },
+        {
+          "command": "polyLingo.selectInterfaceLanguage",
+          "group": "9_settings@3"
+        },
+        {
+          "command": "polyLingo.openSettings",
+          "group": "9_settings@9"
+        }
+      ],
+      "terminal/context": [
+        {
+          "submenu": "polyLingo.terminalContextMenu",
+          "group": "polyLingo@100"
+        }
+      ],
+      "polyLingo.terminalContextMenu": [
+        {
+          "command": "polyLingo.translateTerminalSelection",
+          "group": "1_translate@1"
+        },
+        {
+          "command": "polyLingo.explainTerminalSelection",
+          "group": "1_translate@2",
+          "when": "polyLingo.aiAvailable"
+        },
+        {
+          "command": "polyLingo.selectProvider",
+          "group": "9_settings@1"
+        },
+        {
+          "command": "polyLingo.selectTargetLanguage",
+          "group": "9_settings@2"
+        },
+        {
+          "command": "polyLingo.selectInterfaceLanguage",
+          "group": "9_settings@3"
+        },
+        {
+          "command": "polyLingo.openSettings",
+          "group": "9_settings@9"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "polyLingo.translateSelection"
+        },
+        {
+          "command": "polyLingo.translateAndReplaceSelection"
+        },
+        {
+          "command": "polyLingo.translateDocument"
+        },
+        {
+          "command": "polyLingo.translateDocumentInPlace"
+        },
+        {
+          "command": "polyLingo.translateTerminalSelection"
+        },
+        {
+          "command": "polyLingo.translateClipboard"
+        },
+        {
+          "command": "polyLingo.explainSelection",
+          "when": "polyLingo.aiAvailable"
+        },
+        {
+          "command": "polyLingo.explainTerminalSelection",
+          "when": "polyLingo.aiAvailable"
+        },
+        {
+          "command": "polyLingo.selectProvider"
+        },
+        {
+          "command": "polyLingo.selectTargetLanguage"
+        },
+        {
+          "command": "polyLingo.selectInterfaceLanguage"
+        },
+        {
+          "command": "polyLingo.manageCredentials"
+        },
+        {
+          "command": "polyLingo.openSettings"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "polyLingo.translateSelection",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "polyLingo.translateTerminalSelection",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "terminalFocus"
+      }
+    ],
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "polyLingo.ui.language": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "zh-CN",
+            "zh-TW",
+            "en",
+            "ja",
+            "ko"
+          ],
+          "enumDescriptions": [
+            "%config.uiLanguage.auto%",
+            "%config.uiLanguage.zhCN%",
+            "%config.uiLanguage.zhTW%",
+            "%config.uiLanguage.en%",
+            "%config.uiLanguage.ja%",
+            "%config.uiLanguage.ko%"
+          ],
+          "description": "%config.uiLanguage.description%"
+        },
+        "polyLingo.provider": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "google-free",
+            "bing-web",
+            "mymemory",
+            "libretranslate",
+            "deepl",
+            "azure",
+            "google-cloud",
+            "baidu",
+            "tencent",
+            "openai-compatible",
+            "ollama"
+          ],
+          "enumDescriptions": [
+            "%config.provider.auto%",
+            "%config.provider.googleFree%",
+            "%config.provider.bingWeb%",
+            "%config.provider.mymemory%",
+            "%config.provider.libreTranslate%",
+            "%config.provider.deepl%",
+            "%config.provider.azure%",
+            "%config.provider.googleCloud%",
+            "%config.provider.baidu%",
+            "%config.provider.tencent%",
+            "%config.provider.openAICompatible%",
+            "%config.provider.ollama%"
+          ],
+          "description": "%config.provider.description%"
+        },
+        "polyLingo.providerOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "google-free",
+            "bing-web",
+            "mymemory",
+            "libretranslate",
+            "deepl",
+            "azure",
+            "google-cloud",
+            "baidu",
+            "tencent",
+            "openai-compatible",
+            "ollama"
+          ],
+          "description": "%config.providerOrder.description%"
+        },
+        "polyLingo.sourceLanguage": {
+          "type": "string",
+          "default": "auto",
+          "description": "%config.sourceLanguage.description%"
+        },
+        "polyLingo.targetLanguage": {
+          "type": "string",
+          "default": "zh-CN",
+          "description": "%config.targetLanguage.description%"
+        },
+        "polyLingo.proxy": {
+          "type": "string",
+          "default": "",
+          "description": "%config.proxy.description%"
+        },
+        "polyLingo.requestTimeoutMs": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 1000,
+          "maximum": 120000,
+          "description": "%config.requestTimeoutMs.description%"
+        },
+        "polyLingo.maxSelectionChars": {
+          "type": "number",
+          "default": 12000,
+          "minimum": 100,
+          "maximum": 100000,
+          "description": "%config.maxSelectionChars.description%"
+        },
+        "polyLingo.document.chunkChars": {
+          "type": "number",
+          "default": 3500,
+          "minimum": 500,
+          "maximum": 20000,
+          "description": "%config.document.chunkChars.description%"
+        },
+        "polyLingo.document.mode": {
+          "type": "string",
+          "default": "smart",
+          "enum": [
+            "smart",
+            "whole"
+          ],
+          "enumDescriptions": [
+            "%config.document.mode.smart%",
+            "%config.document.mode.whole%"
+          ],
+          "description": "%config.document.mode.description%"
+        },
+        "polyLingo.selection.autoTranslate": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.selection.autoTranslate.description%"
+        },
+        "polyLingo.selection.debounceMs": {
+          "type": "number",
+          "default": 650,
+          "minimum": 150,
+          "maximum": 5000,
+          "description": "%config.selection.debounceMs.description%"
+        },
+        "polyLingo.result.showOutputChannel": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.result.showOutputChannel.description%"
+        },
+        "polyLingo.result.editorPresentation": {
+          "type": "string",
+          "default": "hover",
+          "enum": [
+            "hover",
+            "sidebar",
+            "notification",
+            "editor"
+          ],
+          "enumDescriptions": [
+            "%config.result.presentation.hover%",
+            "%config.result.presentation.sidebar%",
+            "%config.result.presentation.notification%",
+            "%config.result.presentation.editor%"
+          ],
+          "description": "%config.result.editorPresentation.description%"
+        },
+        "polyLingo.result.terminalPresentation": {
+          "type": "string",
+          "default": "sidebar",
+          "enum": [
+            "sidebar",
+            "notification",
+            "editor"
+          ],
+          "enumDescriptions": [
+            "%config.result.presentation.sidebar%",
+            "%config.result.presentation.notification%",
+            "%config.result.presentation.editor%"
+          ],
+          "description": "%config.result.terminalPresentation.description%"
+        },
+        "polyLingo.googleFree.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.googleFree.endpoint": {
+          "type": "string",
+          "default": "https://translate.googleapis.com/translate_a/single",
+          "description": "%config.googleFree.endpoint.description%"
+        },
+        "polyLingo.bingWeb.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.bingWeb.endpoint": {
+          "type": "string",
+          "default": "https://www.bing.com/translator",
+          "description": "%config.bingWeb.endpoint.description%"
+        },
+        "polyLingo.mymemory.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.mymemory.email": {
+          "type": "string",
+          "default": "",
+          "description": "%config.mymemory.email.description%"
+        },
+        "polyLingo.libreTranslate.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.libreTranslate.baseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:5000",
+          "description": "%config.libreTranslate.baseUrl.description%"
+        },
+        "polyLingo.deepl.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.deepl.baseUrl": {
+          "type": "string",
+          "default": "https://api-free.deepl.com/v2",
+          "description": "%config.deepl.baseUrl.description%"
+        },
+        "polyLingo.azure.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.azure.endpoint": {
+          "type": "string",
+          "default": "https://api.cognitive.microsofttranslator.com",
+          "description": "%config.azure.endpoint.description%"
+        },
+        "polyLingo.azure.region": {
+          "type": "string",
+          "default": "",
+          "description": "%config.azure.region.description%"
+        },
+        "polyLingo.googleCloud.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.googleCloud.endpoint": {
+          "type": "string",
+          "default": "https://translation.googleapis.com/language/translate/v2",
+          "description": "%config.googleCloud.endpoint.description%"
+        },
+        "polyLingo.baidu.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.baidu.endpoint": {
+          "type": "string",
+          "default": "https://fanyi-api.baidu.com/api/trans/vip/translate",
+          "description": "%config.baidu.endpoint.description%"
+        },
+        "polyLingo.tencent.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.tencent.endpoint": {
+          "type": "string",
+          "default": "https://tmt.tencentcloudapi.com",
+          "description": "%config.tencent.endpoint.description%"
+        },
+        "polyLingo.tencent.region": {
+          "type": "string",
+          "default": "ap-guangzhou",
+          "description": "%config.tencent.region.description%"
+        },
+        "polyLingo.ai.prompt": {
+          "type": "string",
+          "default": "You are PolyLingo, a developer-focused translation assistant.\nTask: {task}\nTarget language: {targetLanguage}\nSource language: {sourceLanguage}\nContext: {context}\n\nRules:\n- Preserve code, commands, flags, paths, URLs, identifiers, API names, stack-trace tokens and Markdown when practical.\n- Do not invent missing context.\n- For translation-only tasks, return only the translation with no headings or commentary.\n- For translate-and-explain tasks, translate first and then give a concise technical explanation in the target language.",
+          "description": "%config.ai.prompt.description%"
+        },
+        "polyLingo.openAI.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.openAI.baseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "%config.openAI.baseUrl.description%"
+        },
+        "polyLingo.openAI.model": {
+          "type": "string",
+          "default": "gpt-4.1-mini",
+          "description": "%config.openAI.model.description%"
+        },
+        "polyLingo.openAI.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "%config.openAI.temperature.description%"
+        },
+        "polyLingo.openAI.extraHeaders": {
+          "type": "object",
+          "default": {},
+          "description": "%config.openAI.extraHeaders.description%"
+        },
+        "polyLingo.ollama.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.providerEnabled.description%"
+        },
+        "polyLingo.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434/v1",
+          "description": "%config.ollama.baseUrl.description%"
+        },
+        "polyLingo.ollama.model": {
+          "type": "string",
+          "default": "qwen2.5:7b",
+          "description": "%config.ollama.model.description%"
+        }
+      }
+    },
+    "submenus": [
+      {
+        "id": "polyLingo.editorContextMenu",
+        "label": "PolyLingo"
+      },
+      {
+        "id": "polyLingo.terminalContextMenu",
+        "label": "PolyLingo"
+      }
+    ]
+  }
+}
