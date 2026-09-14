@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (for example 0.1.1 or v0.1.1)
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,17 +21,32 @@ concurrency:
 jobs:
   release:
     name: Package and release
-    if: startsWith(github.event.head_commit.message, 'v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'v')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Read version from commit message
+      - name: Read release version
         id: release
         shell: bash
         env:
+          EVENT_NAME: ${{ github.event_name }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            version="${INPUT_VERSION#v}"
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Version must use X.Y.Z or vX.Y.Z format."
+              exit 1
+            fi
+
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+            echo "version=${version}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           first_line="${COMMIT_MESSAGE%%$'\n'*}"
           if [[ "$first_line" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)([[:space:]]|$) ]]; then
