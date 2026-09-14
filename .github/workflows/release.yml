@@ -74,7 +74,6 @@ jobs:
         run: |
           npm run package
           test -f "release/poly-lingo-${VERSION}.vsix"
-          cp "release/poly-lingo-${VERSION}.vsix" "release/poly-lingo-latest.vsix"
 
       - name: Build release notes
         if: steps.release.outputs.should_release == 'true'
@@ -125,11 +124,9 @@ jobs:
           set -euo pipefail
 
           versioned_asset="release/poly-lingo-${VERSION}.vsix"
-          latest_asset="release/poly-lingo-latest.vsix"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" \
               "$versioned_asset#PolyLingo ${TAG} VSIX" \
-              "$latest_asset#PolyLingo Latest VSIX" \
               --clobber \
               --repo "$GITHUB_REPOSITORY"
             gh release edit "$TAG" \
@@ -140,7 +137,6 @@ jobs:
           else
             gh release create "$TAG" \
               "$versioned_asset#PolyLingo ${TAG} VSIX" \
-              "$latest_asset#PolyLingo Latest VSIX" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "$TAG" \
