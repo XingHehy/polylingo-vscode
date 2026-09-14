@@ -74,6 +74,45 @@ jobs:
         run: |
           npm run package
           test -f "release/poly-lingo-${VERSION}.vsix"
+          cp "release/poly-lingo-${VERSION}.vsix" "release/poly-lingo-latest.vsix"
+
+      - name: Build release notes
+        if: steps.release.outputs.should_release == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          awk -v heading="## ${VERSION}" '
+            $0 == heading { in_section = 1; next }
+            in_section && /^## / { exit }
+            in_section { lines[++count] = $0 }
+            END {
+              first = 1
+              while (first <= count && lines[first] ~ /^[[:space:]]*$/) first++
+              while (count >= first && lines[count] ~ /^[[:space:]]*$/) count--
+              for (i = first; i <= count; i++) print lines[i]
+            }
+          ' CHANGELOG.md > release/current-changelog.md
+
+          if [[ ! -s release/current-changelog.md ]]; then
+            echo "::error::CHANGELOG.md does not contain a ## ${VERSION} section."
+            exit 1
+          fi
+
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f "tag_name=${TAG}" \
+            -f "target_commitish=${GITHUB_SHA}" \
+            --jq '.body' > release/generated-notes.md
+
+          {
+            cat release/current-changelog.md
+            printf '\n\n'
+            cat release/generated-notes.md
+          } > release/release-notes.md
 
       - name: Create GitHub Release
         if: steps.release.outputs.should_release == 'true'
@@ -85,15 +124,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          asset="release/poly-lingo-${VERSION}.vsix"
+          versioned_asset="release/poly-lingo-${VERSION}.vsix"
+          latest_asset="release/poly-lingo-latest.vsix"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$asset" --clobber --repo "$GITHUB_REPOSITORY"
-            gh release edit "$TAG" --latest --title "$TAG" --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" \
+              "$versioned_asset#PolyLingo ${TAG} VSIX" \
+              "$latest_asset#PolyLingo Latest VSIX" \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" \
+              --latest \
+              --title "$TAG" \
+              --notes-file release/release-notes.md \
+              --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" "$asset#PolyLingo ${TAG} VSIX" \
+            gh release create "$TAG" \
+              "$versioned_asset#PolyLingo ${TAG} VSIX" \
+              "$latest_asset#PolyLingo Latest VSIX" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "$TAG" \
-              --generate-notes \
+              --notes-file release/release-notes.md \
               --latest
           fi
