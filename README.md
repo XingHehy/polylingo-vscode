@@ -1,10 +1,10 @@
+[English](README.en.md) | **简体中文** | [繁體中文](README.zh-TW.md)
+
 # PolyLingo
 
 面向开发者的 VS Code 多引擎翻译扩展。
 
 在编辑器、终端和技术文档中直接翻译文字，也可以使用 AI 翻译并解释错误日志。PolyLingo 不绑定单一服务：既支持免费接口，也支持官方 API、OpenAI 兼容服务和本地模型。
-
-> 当前版本：`0.1.0` · VS Code `1.65.0+` · MIT License
 
 ## 主要功能
 
@@ -32,12 +32,12 @@ Extensions → … → Install from VSIX…
 也可以使用命令行安装：
 
 ```bash
-code --install-extension poly-lingo-0.1.0.vsix
+code --install-extension poly-lingo-0.1.2.vsix
 ```
 
 ### 第一次使用
 
-1. 在命令面板运行 `PolyLingo: Open Settings`。
+1. 在命令面板运行 `PolyLingo: Open Custom Settings`。
 2. 选择目标语言和翻译引擎。默认 `Auto` 会依次尝试已启用的引擎。
 3. 在编辑器中选中文字，按快捷键或使用右键菜单翻译。
 
@@ -67,6 +67,8 @@ code --install-extension poly-lingo-0.1.0.vsix
 | 终端 | PolyLingo 侧边栏、右下角通知、编辑器分栏 | 侧边栏 |
 
 终端没有可用的稳定 Hover API，因此不提供选区浮窗。侧边栏会显示原文、译文、Provider 和语言检测结果，并提供复制、AI 解释及 Output 操作。
+
+当译文包含 Markdown 时，编辑器 Hover 和侧边栏会渲染标题、列表、表格、引用与代码块；编辑器分栏模式会打开 Markdown 预览。为保证安全，原始 HTML、远程图片和命令链接不会执行。
 
 ### PolyLingo 侧边栏
 
@@ -103,7 +105,7 @@ code --install-extension poly-lingo-0.1.0.vsix
 
 ## 设置
 
-运行 `PolyLingo: Open Settings` 可以：
+运行 `PolyLingo: Open Custom Settings` 可以：
 
 - 启用或关闭翻译引擎
 - 设置源语言、目标语言和默认引擎
@@ -199,7 +201,7 @@ ollama pull qwen2.5:7b
 | AI Translate and Explain        | 使用 AI 翻译并解释    |
 | Select Translation Provider     | 切换翻译引擎          |
 | Select Target Language          | 切换目标语言          |
-| Open Settings                   | 打开 PolyLingo 设置页 |
+| Open Custom Settings            | 打开 PolyLingo 自定义设置页 |
 
 ## 常见问题
 

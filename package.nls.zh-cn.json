@@ -12,7 +12,7 @@
   "command.selectTargetLanguage": "选择目标语言",
   "command.selectInterfaceLanguage": "选择界面语言",
   "command.manageCredentials": "管理 API 凭据",
-  "command.openSettings": "打开设置",
+  "command.openSettings": "打开自定义设置",
   "config.uiLanguage.description": "PolyLingo 运行时界面语言。默认自动跟随 VS Code 显示语言。VS Code 原生右键菜单文字会跟随 VS Code 的显示语言。",
   "config.uiLanguage.auto": "跟随 VS Code 显示语言",
   "config.uiLanguage.zhCN": "简体中文",

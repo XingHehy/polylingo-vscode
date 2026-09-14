@@ -12,7 +12,7 @@
   "command.selectTargetLanguage": "Select Target Language",
   "command.selectInterfaceLanguage": "Select Interface Language",
   "command.manageCredentials": "Manage API Credentials",
-  "command.openSettings": "Open Settings",
+  "command.openSettings": "Open Custom Settings",
   "config.uiLanguage.description": "PolyLingo runtime interface language. Auto follows the current VS Code display language. Native VS Code context-menu labels follow VS Code's display language.",
   "config.uiLanguage.auto": "Follow VS Code display language",
   "config.uiLanguage.zhCN": "Simplified Chinese",

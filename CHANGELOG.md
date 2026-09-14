@@ -2,6 +2,12 @@
 
 All notable changes to PolyLingo will be documented in this file.
 
+## 0.1.1
+
+- Added a dedicated PolyLingo icon for the Extensions view.
+- Added an **Open Custom Settings** action to the extension manage menu for direct access to the PolyLingo custom settings panel.
+- Added safe Markdown rendering for Hover and sidebar results, plus automatic Markdown Preview for editor-column results.
+
 ## 0.1.0
 
 - Added editor selection translation with an in-place Hover popup for both loading state and translated results.

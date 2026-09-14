@@ -1,10 +1,15 @@
 {
   "name": "poly-lingo",
   "displayName": "PolyLingo",
+  "icon": "resources/polylingo.png",
   "description": "%extension.description%",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "xinghehy",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/XingHehy/polylingo-vscode.git"
+  },
   "engines": {
     "vscode": ">=1.65.0"
   },
@@ -49,11 +54,12 @@
     "watch": "node esbuild.js --watch",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "package": "npm run typecheck && npm run compile && vsce package --allow-missing-repository",
+    "package": "npm run typecheck && npm run compile && node -e \"require('fs').mkdirSync('release',{recursive:true})\" && vsce package --allow-missing-repository --out release",
     "vscode:prepublish": "npm run compile"
   },
   "dependencies": {
-    "https-proxy-agent": "^5.0.1"
+    "https-proxy-agent": "^5.0.1",
+    "marked": "^4.3.0"
   },
   "devDependencies": {
     "@types/node": "^16.18.126",
@@ -147,10 +153,18 @@
       {
         "command": "polyLingo.openSettings",
         "title": "%command.openSettings%",
-        "category": "PolyLingo"
+        "category": "PolyLingo",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
+      "extension/context": [
+        {
+          "command": "polyLingo.openSettings",
+          "group": "polyLingo@1",
+          "when": "extension == xinghehy.poly-lingo && extensionStatus == installed"
+        }
+      ],
       "editor/context": [
         {
           "submenu": "polyLingo.editorContextMenu",

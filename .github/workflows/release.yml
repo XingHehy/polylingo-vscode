@@ -1,0 +1,99 @@
+name: Release VSIX
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Package and release
+    if: startsWith(github.event.head_commit.message, 'v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Read version from commit message
+        id: release
+        shell: bash
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          first_line="${COMMIT_MESSAGE%%$'\n'*}"
+          if [[ "$first_line" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)([[:space:]]|$) ]]; then
+            tag="${BASH_REMATCH[1]}"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Commit message does not start with a valid vX.Y.Z version. Skipping release."
+          fi
+
+      - name: Check out repository
+        if: steps.release.outputs.should_release == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.release.outputs.should_release == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.release.outputs.should_release == 'true'
+        run: npm ci
+
+      - name: Verify release version
+        if: steps.release.outputs.should_release == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "$package_version" != "$VERSION" ]]; then
+            echo "::error::Commit version v${VERSION} does not match package.json version ${package_version}."
+            exit 1
+          fi
+
+      - name: Package VSIX
+        if: steps.release.outputs.should_release == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          npm run package
+          test -f "release/poly-lingo-${VERSION}.vsix"
+
+      - name: Create GitHub Release
+        if: steps.release.outputs.should_release == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          asset="release/poly-lingo-${VERSION}.vsix"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$asset" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --latest --title "$TAG" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$asset#PolyLingo ${TAG} VSIX" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$TAG" \
+              --generate-notes \
+              --latest
+          fi
