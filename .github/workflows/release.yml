@@ -126,7 +126,7 @@ jobs:
           versioned_asset="release/poly-lingo-${VERSION}.vsix"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" \
-              "$versioned_asset#PolyLingo ${TAG} VSIX" \
+              "$versioned_asset" \
               --clobber \
               --repo "$GITHUB_REPOSITORY"
             gh release edit "$TAG" \
@@ -136,7 +136,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$TAG" \
-              "$versioned_asset#PolyLingo ${TAG} VSIX" \
+              "$versioned_asset" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "$TAG" \
