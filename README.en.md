@@ -8,14 +8,14 @@ Translate text directly in editors, terminals, and technical documentation, or u
 
 ## Features
 
-- **Translate editor selections**: Show translations near the selection, then copy the result or replace the original text.
-- **Automatic selection translation**: Start translating after the selection stops changing, with a configurable delay.
+- **Translate editor selections**: Selecting text opens a hover; click Translate to send the request, then copy or replace the result.
+- **Automatic selection translation**: Optionally start translating in the hover as soon as the selection settles.
 - **Terminal translation**: Translate command output, errors, and logs.
 - **Document translation**: Supports Markdown, plain text, and source-code comments; Smart mode protects code blocks.
 - **AI translation and explanation**: Understand technical content through an OpenAI-compatible service or Ollama.
 - **Multiple engines with automatic fallback**: In `auto` mode, PolyLingo tries the next available engine when one fails.
 - **Flexible result placement**: Choose a hover, sidebar, notification, or editor column for each workflow.
-- **Translation workspace**: Enter text directly in the sidebar and browse local translation history.
+- **Translation workspace**: Selected text fills the sidebar input; choose an engine, translate, and browse local history.
 - **Secure credentials**: API keys are stored in VS Code `SecretStorage`, never in `settings.json`.
 - **Localized interface**: Supports Simplified Chinese, Traditional Chinese, English, Japanese, and Korean.
 
@@ -39,7 +39,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 1. Run `PolyLingo: Open Custom Settings` from the Command Palette.
 2. Choose a target language and translation engine. The default `Auto` option tries enabled engines in order.
-3. Select text in an editor, then use the keyboard shortcut or context menu to translate it.
+3. Select text in an editor and click Translate in the hover, or use the keyboard shortcut or context menu.
 
 Default shortcuts:
 
@@ -48,7 +48,7 @@ Default shortcuts:
 | macOS | `Cmd + Alt + T` |
 | Windows / Linux | `Ctrl + Alt + T` |
 
-To translate selections automatically, enable **Auto-translate selection** on the settings page.
+To translate without clicking, enable **Translate automatically in selection hover** on the settings page.
 
 ## Translation Results
 
@@ -99,7 +99,7 @@ For compatibility with VS Code 1.98.2 and earlier, PolyLingo is registered in th
 | OpenAI Compatible | Usually required | AI service compatible with `/chat/completions` |
 | Ollama | None | Models running locally |
 
-Google Free, Bing Web, and MyMemory are enabled by default. Other engines must be enabled manually on the PolyLingo settings page.
+Google Free, Bing Web, and MyMemory are built in and enabled by default. These three can be disabled but not deleted. Any provider type can be added more than once—for example, multiple LibreTranslate servers, OpenAI-compatible endpoints, or additional Google Free, Bing Web, and MyMemory instances. Each instance has its own name, settings, and credentials, and appears as “name · provider”.
 
 > Google Free and Bing Web are not official public APIs. They are suitable for lightweight use, but availability is not guaranteed. For reliable service, configure an official API, a self-hosted LibreTranslate instance, or local Ollama.
 
@@ -108,11 +108,13 @@ Google Free, Bing Web, and MyMemory are enabled by default. Other engines must b
 Run `PolyLingo: Open Custom Settings` to:
 
 - Enable or disable translation engines
+- Drag the three-line handle to reorder engine priority
+- Add, name, and delete custom engine instances; the three built-in instances can only be disabled
 - Set the source language, target language, and default engine
 - Test each engine
 - Store API keys, regions, model names, and related parameters
-- Configure the proxy, request timeout, and automatic-selection delay
-- Edit the AI translation prompt
+- Configure the proxy, request timeout, and selection-hover delay
+- Edit the AI translation prompt separately for each OpenAI Compatible or Ollama instance
 
 Common native VS Code settings:
 
@@ -133,7 +135,7 @@ Common native VS Code settings:
 
 ### Auto Mode
 
-When `polyLingo.provider` is set to `auto`, PolyLingo tries enabled and fully configured engines in the order specified by `polyLingo.providerOrder`. When you explicitly select one engine, PolyLingo does not switch providers after a failed request.
+When `polyLingo.provider` is `auto`, PolyLingo tries enabled and fully configured engine instances from top to bottom in the list. Drag the three-line handle on each row to change priority; the order is saved automatically. Selecting a specific instance disables fallback after a failed request. Manage instances in the custom settings page; legacy per-provider settings and credentials are not read.
 
 ### Proxy
 
@@ -184,7 +186,7 @@ ollama pull qwen2.5:7b
 }
 ```
 
-The built-in prompts aim to preserve code, commands, paths, URLs, identifiers, API names, stack traces, and Markdown. You can edit or restore them on the PolyLingo settings page.
+The built-in prompt aims to preserve code, commands, paths, URLs, identifiers, API names, stack traces, and Markdown. Each OpenAI Compatible or Ollama instance has its own prompt, which you can edit or restore in that instance’s Edit panel.
 
 ## Commands
 

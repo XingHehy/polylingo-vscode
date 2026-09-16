@@ -1,5 +1,5 @@
 import { getProvider, getProviderOrder, isProviderEnabled } from './config';
-import { ProviderId, TranslateRequest, TranslateResult, TranslationProvider } from './types';
+import { TranslateRequest, TranslateResult, TranslationProvider } from './types';
 
 function splitText(text: string, maxChars: number): string[] {
   if (text.length <= maxChars) return [text];
@@ -20,13 +20,17 @@ function splitText(text: string, maxChars: number): string[] {
 }
 
 export class TranslationManager {
-  private readonly providers = new Map<ProviderId, TranslationProvider>();
+  private readonly providers = new Map<string, TranslationProvider>();
+
+  clear(): void {
+    this.providers.clear();
+  }
 
   register(provider: TranslationProvider): void {
     this.providers.set(provider.id, provider);
   }
 
-  getProvider(id: ProviderId): TranslationProvider | undefined {
+  getProvider(id: string): TranslationProvider | undefined {
     return this.providers.get(id);
   }
 
@@ -37,7 +41,10 @@ export class TranslationManager {
   private async runProvider(provider: TranslationProvider, req: TranslateRequest): Promise<TranslateResult> {
     const max = provider.maxChars || Number.MAX_SAFE_INTEGER;
     const chunks = splitText(req.text, max);
-    if (chunks.length === 1) return provider.translate(req);
+    if (chunks.length === 1) {
+      const result = await provider.translate(req);
+      return { ...result, provider: provider.displayName };
+    }
 
     const results: TranslateResult[] = [];
     for (const chunk of chunks) {
@@ -46,12 +53,12 @@ export class TranslationManager {
     }
     return {
       text: results.map((r) => r.text).join(''),
-      provider: provider.id,
+      provider: provider.displayName,
       detectedLanguage: results.find((r) => r.detectedLanguage)?.detectedLanguage
     };
   }
 
-  async translate(req: TranslateRequest, preferredProvider?: ProviderId): Promise<TranslateResult> {
+  async translate(req: TranslateRequest, preferredProvider?: string): Promise<TranslateResult> {
     const selected = preferredProvider || getProvider();
     if (selected !== 'auto') {
       const provider = this.providers.get(selected);
@@ -78,9 +85,8 @@ export class TranslationManager {
 
 
   async hasAvailableAIProvider(): Promise<boolean> {
-    for (const id of ['openai-compatible', 'ollama'] as ProviderId[]) {
-      const provider = this.providers.get(id);
-      if (!provider || !isProviderEnabled(id)) continue;
+    for (const provider of this.providers.values()) {
+      if ((provider.kind !== 'openai-compatible' && provider.kind !== 'ollama') || !isProviderEnabled(provider.id)) continue;
       try {
         if (await provider.isConfigured()) return true;
       } catch {
@@ -90,7 +96,7 @@ export class TranslationManager {
     return false;
   }
 
-  async testProvider(id: ProviderId): Promise<TranslateResult> {
+  async testProvider(id: string): Promise<TranslateResult> {
     if (id === 'auto') throw new Error('Auto cannot be tested directly.');
     const provider = this.providers.get(id);
     if (!provider) throw new Error(`Unknown provider: ${id}`);
@@ -106,11 +112,9 @@ export class TranslationManager {
   }
 
   async translateWithAI(req: TranslateRequest): Promise<TranslateResult> {
-    const candidates: ProviderId[] = ['openai-compatible', 'ollama'];
     const errors: string[] = [];
-    for (const id of candidates) {
-      const provider = this.providers.get(id);
-      if (!provider || !isProviderEnabled(id)) continue;
+    for (const provider of this.providers.values()) {
+      if ((provider.kind !== 'openai-compatible' && provider.kind !== 'ollama') || !isProviderEnabled(provider.id)) continue;
       try {
         if (!await provider.isConfigured()) continue;
         return await this.runProvider(provider, { ...req, explain: true });

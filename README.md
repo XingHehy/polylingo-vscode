@@ -8,14 +8,14 @@
 
 ## 主要功能
 
-- **编辑器划词翻译**：在选区附近显示译文，可复制或替换原文。
-- **自动划词翻译**：选区停止变化后自动开始翻译，可配置延迟。
+- **编辑器划词翻译**：选中文字后自动显示浮窗，点击“翻译”才开始请求；译文可复制或替换原文。
+- **自动划词翻译**：可选开启，选区停止变化后直接在浮窗翻译。
 - **终端翻译**：翻译命令输出、报错和日志。
 - **文档翻译**：支持 Markdown、纯文本和源代码注释；智能模式会保护代码块。
 - **AI 翻译与解释**：通过 OpenAI Compatible 或 Ollama 理解技术内容。
 - **多引擎与自动降级**：当前引擎失败后，`auto` 模式会尝试下一个可用引擎。
 - **结果位置可选**：按使用场景选择浮窗、侧边栏、右下角通知或编辑器分栏。
-- **翻译工作区**：在侧边栏直接输入文字翻译，并查看本地历史记录。
+- **翻译工作区**：选区原文自动填入侧边栏输入框，可选择引擎翻译并查看本地历史记录。
 - **安全保存凭据**：API Key 存入 VS Code `SecretStorage`，不会写入 `settings.json`。
 - **多语言界面**：支持简体中文、繁体中文、English、日本語和한국어。
 
@@ -39,7 +39,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 1. 在命令面板运行 `PolyLingo: Open Custom Settings`。
 2. 选择目标语言和翻译引擎。默认 `Auto` 会依次尝试已启用的引擎。
-3. 在编辑器中选中文字，按快捷键或使用右键菜单翻译。
+3. 在编辑器中选中文字，在弹出的浮窗点击“翻译”，也可以使用快捷键或右键菜单。
 
 默认快捷键：
 
@@ -48,7 +48,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 | macOS           | `Cmd + Alt + T`  |
 | Windows / Linux | `Ctrl + Alt + T` |
 
-如果希望选词后自动翻译，请在设置页启用 **划词后自动翻译**。
+如果希望选词后无需点击就开始翻译，请在设置页启用 **划词浮窗自动翻译**。
 
 ## 翻译结果
 
@@ -99,7 +99,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 | OpenAI Compatible        | 通常需要 | 兼容`/chat/completions` 的 AI 服务 |
 | Ollama                   |       无 | 本机运行的模型                       |
 
-默认启用 Google Free、Bing Web 和 MyMemory。其他引擎需要在 PolyLingo 设置页中手动启用。
+默认内置并启用 Google Free、Bing Web 和 MyMemory。这三个内置项可以禁用，但不能删除。所有类型都可以重复添加，例如多个 LibreTranslate 服务、多个 OpenAI Compatible 接口，或额外的 Google Free、Bing Web、MyMemory。每个实例可单独命名，并显示为“名称 · 提供商”；参数和密钥互相独立。
 
 > Google Free 与 Bing Web 并非官方公开 API，适合轻量使用，但不能保证稳定性。需要稳定服务时，请配置官方 API、自托管 LibreTranslate 或本地 Ollama。
 
@@ -108,11 +108,13 @@ code --install-extension poly-lingo-0.1.2.vsix
 运行 `PolyLingo: Open Custom Settings` 可以：
 
 - 启用或关闭翻译引擎
+- 拖动引擎列表左侧的三横线调整优先级
+- 添加、命名、删除自定义引擎实例；内置的三个仅可禁用
 - 设置源语言、目标语言和默认引擎
 - 测试每个引擎是否可用
 - 保存 API Key、Region、模型名称等参数
-- 配置代理、请求超时和自动划词延迟
-- 编辑 AI 翻译 Prompt
+- 配置代理、请求超时和划词浮窗延迟
+- 在每个 OpenAI Compatible 或 Ollama 引擎实例中分别编辑 AI 翻译 Prompt
 
 常用的原生 VS Code 配置示例：
 
@@ -133,7 +135,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 ### Auto 模式
 
-`polyLingo.provider` 设置为 `auto` 时，PolyLingo 会按照 `polyLingo.providerOrder` 依次尝试已启用且配置完整的引擎。单独选定某个引擎时，请求失败后不会切换到其他引擎。
+`polyLingo.provider` 设置为 `auto` 时，PolyLingo 会从上到下依次尝试引擎列表中已启用且配置完整的实例。拖动每行左侧的三横线可调整优先级，顺序会自动保存。单独选定某个实例时，请求失败后不会切换到其他实例。实例请通过自定义设置页管理；不读取旧版按提供商划分的独立配置或密钥。
 
 ### 代理
 
@@ -184,7 +186,7 @@ ollama pull qwen2.5:7b
 }
 ```
 
-内置 Prompt 会尽量保留代码、命令、路径、URL、标识符、API 名称、堆栈和 Markdown。可以在 PolyLingo 设置页中修改或恢复默认值。
+内置 Prompt 会尽量保留代码、命令、路径、URL、标识符、API 名称、堆栈和 Markdown。每个 OpenAI Compatible 或 Ollama 实例都有自己的 Prompt；在该实例的“编辑”弹窗中可修改或恢复默认值。
 
 ## 常用命令
 

@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
+import { randomBytes } from 'crypto';
 import {
-  ALL_PROVIDER_IDS,
   CONFIG_SECTION,
   getProvider,
+  getProviderInstances,
   getSetting,
-  isProviderEnabled,
+  isBuiltInInstance,
+  saveProviderInstances,
   setGlobalSetting,
   setProviderEnabled
 } from '../core/config';
@@ -12,7 +14,7 @@ import { DEFAULT_AI_PROMPT } from '../core/aiPrompt';
 import { getUiLanguage } from '../core/i18n';
 import { TranslationManager } from '../core/manager';
 import { Secrets, SecretName } from '../core/secrets';
-import { ProviderId } from '../core/types';
+import { ProviderInstance, ProviderKind } from '../core/types';
 import { COMMON_LANGUAGES } from '../utils/language';
 
 interface PanelStrings {
@@ -20,6 +22,13 @@ interface PanelStrings {
   subtitle: string;
   general: string;
   engines: string;
+  dragHint: string;
+  dragHandle: string;
+  addEngine: string;
+  editEngine: string;
+  closeEditor: string;
+  name: string;
+  deleteEngine: string;
   advanced: string;
   interfaceLanguage: string;
   interfaceLanguageHelp: string;
@@ -82,6 +91,7 @@ interface PanelStrings {
   aiPromptPlaceholders: string;
   resetPrompt: string;
   feedback: string;
+  version: string;
   providerDescriptions: Record<string, string>;
 }
 
@@ -89,10 +99,12 @@ const en: PanelStrings = {
   title: 'PolyLingo Settings',
   subtitle: 'A multi-scenario translation tool for developers, covering editor text, documents, terminals, translation services and AI models.',
   general: 'General', engines: 'Translation engines', advanced: 'Advanced',
+  dragHint: 'Drag the handle to set priority. Engines at the top are tried first in Auto mode.', dragHandle: 'Drag to reorder',
+  addEngine: 'Add engine', editEngine: 'Edit', closeEditor: 'Close', name: 'Custom name', deleteEngine: 'Delete',
   interfaceLanguage: 'Interface language', interfaceLanguageHelp: 'Auto follows the current VS Code display language.',
   sourceLanguage: 'Source language', targetLanguage: 'Target language', defaultProvider: 'Default engine',
-  defaultProviderHelp: 'Auto tries enabled engines in the configured fallback order.', auto: 'Auto',
-  autoTranslate: 'Translate selected text automatically', autoTranslateHelp: 'Translate after the selection stops changing.',
+  defaultProviderHelp: 'Auto tries enabled engines from top to bottom in the list.', auto: 'Auto',
+  autoTranslate: 'Translate automatically in selection hover', autoTranslateHelp: 'Off: show a Translate button in the hover. On: start translating automatically.',
   editorPresentation: 'Editor result location', terminalPresentation: 'Terminal result location',
   presentationHover: 'Hover near selection', presentationSidebar: 'PolyLingo sidebar',
   presentationNotification: 'Bottom-right notification', presentationEditor: 'Editor beside current editor',
@@ -103,11 +115,11 @@ const en: PanelStrings = {
   apiKey: 'API Key', appId: 'AppId', secretKey: 'Secret Key', secretId: 'SecretId', savedSecret: 'Saved securely', noSecret: 'Not set',
   saveSecret: 'Save', clearSecret: 'Clear', requestTimeout: 'Request timeout (ms)', maxSelectionChars: 'Max selected characters',
   documentChunkChars: 'Document chunk size', documentMode: 'Document translation mode', documentModeSmart: 'Smart', documentModeWhole: 'Whole document',
-  debounceMs: 'Auto-translate debounce (ms)', showOutput: 'Also show results in Output channel', nativeSettings: 'Open native VS Code settings',
+  debounceMs: 'Selection hover delay (ms)', showOutput: 'Also show results in Output channel', nativeSettings: 'Open native VS Code settings',
   saved: 'Saved', saving: 'Saving…', error: 'Unable to save', enableProviderFirst: 'Enable at least one engine before selecting a fixed default engine.',
   testProvider: 'Test', testingProvider: 'Testing…', providerAvailable: 'Available', providerUnavailable: 'Unavailable',
-  aiPromptTitle: 'AI translation prompt', aiPromptDescription: 'Built-in prompt used by OpenAI Compatible and Ollama. You can edit it for your own translation style.',
-  aiPromptPlaceholders: 'Available placeholders: {task}, {targetLanguage}, {sourceLanguage}, {context}', resetPrompt: 'Restore default prompt', feedback: 'Feedback',
+  aiPromptTitle: 'AI translation prompt', aiPromptDescription: 'Prompt for this engine only. Edit it for your translation style.',
+  aiPromptPlaceholders: 'Available placeholders: {task}, {targetLanguage}, {sourceLanguage}, {context}', resetPrompt: 'Restore default prompt', feedback: 'Feedback', version: 'Version',
   providerDescriptions: {
     'google-free': 'No-key Google web endpoint. Convenient, but unofficial and may change.',
     'bing-web': 'No-key Bing web translator integration. Experimental and may change.',
@@ -128,10 +140,12 @@ const zhCN: PanelStrings = {
   title: 'PolyLingo 设置',
   subtitle: '面向开发者的多场景翻译工具，支持编辑器、文档、终端、多种翻译服务与 AI 模型。',
   general: '常用设置', engines: '翻译引擎', advanced: '高级设置',
+  dragHint: '拖动左侧图标调整优先级；自动模式下越靠前越先尝试。', dragHandle: '拖动调整顺序',
+  addEngine: '添加引擎', editEngine: '编辑', closeEditor: '关闭', name: '自定义名称', deleteEngine: '删除',
   interfaceLanguage: '界面语言', interfaceLanguageHelp: '“自动”会跟随当前 VS Code 显示语言。',
   sourceLanguage: '源语言', targetLanguage: '目标语言', defaultProvider: '默认翻译引擎',
-  defaultProviderHelp: '选择“自动”时，只会按顺序尝试已经启用的翻译引擎。', auto: '自动',
-  autoTranslate: '划词后自动翻译', autoTranslateHelp: '选区停止变化后自动开始翻译。',
+  defaultProviderHelp: '选择“自动”时，会从上到下尝试已启用的翻译引擎。', auto: '自动',
+  autoTranslate: '划词浮窗自动翻译', autoTranslateHelp: '关闭时显示“翻译”按钮，点击后才翻译；开启时自动翻译。',
   editorPresentation: '编辑器译文显示位置', terminalPresentation: '终端译文显示位置',
   presentationHover: '选区附近浮窗', presentationSidebar: 'PolyLingo 侧边栏',
   presentationNotification: '右下角通知', presentationEditor: '编辑器分栏',
@@ -142,11 +156,11 @@ const zhCN: PanelStrings = {
   apiKey: 'API Key', appId: 'AppId', secretKey: 'Secret Key', secretId: 'SecretId', savedSecret: '已安全保存', noSecret: '未设置',
   saveSecret: '保存', clearSecret: '清除', requestTimeout: '请求超时（毫秒）', maxSelectionChars: '最大划词字符数',
   documentChunkChars: '文档分块字符数', documentMode: '文档翻译模式', documentModeSmart: '智能模式', documentModeWhole: '整篇翻译',
-  debounceMs: '自动划词延迟（毫秒）', showOutput: '同时在 Output 面板显示结果', nativeSettings: '打开 VS Code 原生设置',
+  debounceMs: '划词浮窗延迟（毫秒）', showOutput: '同时在 Output 面板显示结果', nativeSettings: '打开 VS Code 原生设置',
   saved: '已保存', saving: '正在保存…', error: '保存失败', enableProviderFirst: '请先至少启用一个翻译引擎，再选择固定的默认引擎。',
   testProvider: '测试', testingProvider: '测试中…', providerAvailable: '可用', providerUnavailable: '不可用',
-  aiPromptTitle: 'AI 翻译 Prompt', aiPromptDescription: 'OpenAI Compatible 和 Ollama 共用的内置 Prompt，可按自己的翻译习惯编辑。',
-  aiPromptPlaceholders: '可用占位符：{task}、{targetLanguage}、{sourceLanguage}、{context}', resetPrompt: '恢复默认 Prompt', feedback: '反馈邮箱',
+  aiPromptTitle: 'AI 翻译 Prompt', aiPromptDescription: '仅用于当前引擎，可按自己的翻译习惯编辑。',
+  aiPromptPlaceholders: '可用占位符：{task}、{targetLanguage}、{sourceLanguage}、{context}', resetPrompt: '恢复默认 Prompt', feedback: '反馈邮箱', version: '版本',
   providerDescriptions: {
     'google-free': '免 Key 的 Google 网页翻译接口。方便，但属于非官方接口，可能发生变化。',
     'bing-web': '免 Key 的 Bing 网页翻译。实验性实现，网页变化时可能失效。',
@@ -166,39 +180,45 @@ const zhTW: PanelStrings = {
   ...zhCN,
   title: 'PolyLingo 設定', subtitle: '面向開發者的多場景翻譯工具，支援編輯器、文件、終端機、多種翻譯服務與 AI 模型。',
   general: '常用設定', engines: '翻譯引擎', advanced: '進階設定', interfaceLanguage: '介面語言',
+  dragHint: '拖曳左側圖示調整優先順序；自動模式會先嘗試前面的引擎。', dragHandle: '拖曳調整順序',
+  addEngine: '新增引擎', editEngine: '編輯', closeEditor: '關閉', name: '自訂名稱', deleteEngine: '刪除',
   interfaceLanguageHelp: '「自動」會跟隨目前 VS Code 顯示語言。', sourceLanguage: '來源語言', targetLanguage: '目標語言',
-  defaultProvider: '預設翻譯引擎', defaultProviderHelp: '選擇「自動」時，只會依序嘗試已啟用的翻譯引擎。', auto: '自動',
-  autoTranslate: '選取文字後自動翻譯', autoTranslateHelp: '選取範圍停止變動後自動開始翻譯。', proxy: '代理伺服器',
+  defaultProvider: '預設翻譯引擎', defaultProviderHelp: '選擇「自動」時，會由上而下嘗試已啟用的翻譯引擎。', auto: '自動',
+  autoTranslate: '選取浮窗自動翻譯', autoTranslateHelp: '關閉時顯示「翻譯」按鈕；開啟時自動翻譯。', debounceMs: '選取浮窗延遲（毫秒）', proxy: '代理伺服器',
   editorPresentation: '編輯器譯文顯示位置', terminalPresentation: '終端機譯文顯示位置', presentationHover: '選取範圍附近浮窗',
   presentationSidebar: 'PolyLingo 側邊欄', presentationNotification: '右下角通知', presentationEditor: '編輯器分欄',
   proxyHelp: '留空時繼承 VS Code http.proxy 或系統環境變數中的代理。', enabled: '已啟用', disabled: '未啟用',
-  enableHint: '勾選啟用後才顯示這個引擎的設定。', nativeSettings: '開啟 VS Code 原生設定', saved: '已儲存', saving: '儲存中…', error: '儲存失敗', testProvider: '測試', testingProvider: '測試中…', providerAvailable: '可用', providerUnavailable: '不可用', aiPromptTitle: 'AI 翻譯 Prompt', aiPromptDescription: 'OpenAI Compatible 與 Ollama 共用的內建 Prompt，可自行編輯。', resetPrompt: '還原預設 Prompt', feedback: '意見回饋'
+  enableHint: '勾選啟用後才顯示這個引擎的設定。', nativeSettings: '開啟 VS Code 原生設定', saved: '已儲存', saving: '儲存中…', error: '儲存失敗', testProvider: '測試', testingProvider: '測試中…', providerAvailable: '可用', providerUnavailable: '不可用', aiPromptTitle: 'AI 翻譯 Prompt', aiPromptDescription: '僅用於目前引擎，可自行編輯。', resetPrompt: '還原預設 Prompt', feedback: '意見回饋', version: '版本'
 };
 
 const ja: PanelStrings = {
   ...en,
   title: 'PolyLingo 設定', subtitle: 'エディター、ドキュメント、ターミナル、複数の翻訳サービス、AI モデルに対応した開発者向け翻訳ツールです。',
   general: '基本設定', engines: '翻訳エンジン', advanced: '詳細設定', interfaceLanguage: 'UI 言語',
+  dragHint: '左のハンドルをドラッグして優先順位を変更します。自動モードでは上から順に試します。', dragHandle: 'ドラッグして並べ替え',
+  addEngine: 'エンジンを追加', editEngine: '編集', closeEditor: '閉じる', name: 'カスタム名', deleteEngine: '削除',
   interfaceLanguageHelp: '「自動」は VS Code の表示言語に従います。', sourceLanguage: '翻訳元言語', targetLanguage: '翻訳先言語',
-  defaultProvider: '既定の翻訳エンジン', defaultProviderHelp: '自動では、有効なエンジンだけをフォールバック順に試します。', auto: '自動',
-  autoTranslate: '選択範囲を自動翻訳', autoTranslateHelp: '選択範囲の変更が止まると翻訳します。', proxy: 'プロキシ',
+  defaultProvider: '既定の翻訳エンジン', defaultProviderHelp: '自動では、有効なエンジンを一覧の上から順に試します。', auto: '自動',
+  autoTranslate: '選択時の Hover で自動翻訳', autoTranslateHelp: 'オフでは翻訳ボタンを表示し、オンでは自動翻訳します。', debounceMs: '選択 Hover の遅延（ms）', proxy: 'プロキシ',
   editorPresentation: 'エディター結果の表示場所', terminalPresentation: 'ターミナル結果の表示場所', presentationHover: '選択範囲付近の Hover',
   presentationSidebar: 'PolyLingo サイドバー', presentationNotification: '右下の通知', presentationEditor: 'エディター分割',
   enabled: '有効', disabled: '無効', enableHint: '有効にするとこのエンジンの設定が表示されます。', free: '無料', official: '公式 API', ai: 'AI',
-  selfHosted: 'セルフホスト', nativeSettings: 'VS Code の標準設定を開く', saved: '保存しました', saving: '保存中…', error: '保存できませんでした', testProvider: 'テスト', testingProvider: 'テスト中…', providerAvailable: '利用可能', providerUnavailable: '利用不可', aiPromptTitle: 'AI 翻訳 Prompt', aiPromptDescription: 'OpenAI Compatible と Ollama で共通利用する組み込み Prompt です。編集できます。', resetPrompt: '既定の Prompt に戻す', feedback: 'フィードバック'
+  selfHosted: 'セルフホスト', nativeSettings: 'VS Code の標準設定を開く', saved: '保存しました', saving: '保存中…', error: '保存できませんでした', testProvider: 'テスト', testingProvider: 'テスト中…', providerAvailable: '利用可能', providerUnavailable: '利用不可', aiPromptTitle: 'AI 翻訳 Prompt', aiPromptDescription: 'このエンジンだけに適用される Prompt です。', resetPrompt: '既定の Prompt に戻す', feedback: 'フィードバック', version: 'バージョン'
 };
 
 const ko: PanelStrings = {
   ...en,
   title: 'PolyLingo 설정', subtitle: '편집기, 문서, 터미널, 다양한 번역 서비스와 AI 모델을 지원하는 개발자용 번역 도구입니다.',
   general: '일반 설정', engines: '번역 엔진', advanced: '고급 설정', interfaceLanguage: '인터페이스 언어',
+  dragHint: '왼쪽 핸들을 드래그해 우선순위를 변경합니다. 자동 모드에서는 위에서부터 시도합니다.', dragHandle: '드래그하여 순서 변경',
+  addEngine: '엔진 추가', editEngine: '편집', closeEditor: '닫기', name: '사용자 지정 이름', deleteEngine: '삭제',
   interfaceLanguageHelp: '자동은 현재 VS Code 표시 언어를 따릅니다.', sourceLanguage: '원본 언어', targetLanguage: '대상 언어',
-  defaultProvider: '기본 번역 엔진', defaultProviderHelp: '자동은 활성화된 엔진만 대체 순서대로 시도합니다.', auto: '자동',
-  autoTranslate: '선택 텍스트 자동 번역', autoTranslateHelp: '선택 영역 변경이 멈춘 뒤 자동으로 번역합니다.', proxy: '프록시',
+  defaultProvider: '기본 번역 엔진', defaultProviderHelp: '자동 모드에서는 활성화된 엔진을 목록 위에서부터 시도합니다.', auto: '자동',
+  autoTranslate: '선택 Hover 자동 번역', autoTranslateHelp: '끄면 번역 버튼을 표시하고, 켜면 자동으로 번역합니다.', debounceMs: '선택 Hover 지연 (ms)', proxy: '프록시',
   editorPresentation: '편집기 결과 위치', terminalPresentation: '터미널 결과 위치', presentationHover: '선택 영역 근처 Hover',
   presentationSidebar: 'PolyLingo 사이드바', presentationNotification: '오른쪽 아래 알림', presentationEditor: '편집기 분할',
   enabled: '활성', disabled: '비활성', enableHint: '활성화하면 이 엔진의 설정이 표시됩니다.', free: '무료', official: '공식 API', ai: 'AI',
-  selfHosted: '셀프 호스팅', nativeSettings: 'VS Code 기본 설정 열기', saved: '저장됨', saving: '저장 중…', error: '저장 실패', testProvider: '테스트', testingProvider: '테스트 중…', providerAvailable: '사용 가능', providerUnavailable: '사용 불가', aiPromptTitle: 'AI 번역 Prompt', aiPromptDescription: 'OpenAI Compatible 및 Ollama에서 공통으로 사용하는 내장 Prompt이며 편집할 수 있습니다.', resetPrompt: '기본 Prompt 복원', feedback: '피드백'
+  selfHosted: '셀프 호스팅', nativeSettings: 'VS Code 기본 설정 열기', saved: '저장됨', saving: '저장 중…', error: '저장 실패', testProvider: '테스트', testingProvider: '테스트 중…', providerAvailable: '사용 가능', providerUnavailable: '사용 불가', aiPromptTitle: 'AI 번역 Prompt', aiPromptDescription: '이 엔진에만 적용되는 Prompt입니다.', resetPrompt: '기본 Prompt 복원', feedback: '피드백', version: '버전'
 };
 
 function strings(): PanelStrings {
@@ -224,7 +244,7 @@ interface SecretField {
 }
 
 interface ProviderDefinition {
-  id: Exclude<ProviderId, 'auto'>;
+  id: ProviderKind;
   name: string;
   category: 'free' | 'official' | 'ai' | 'selfHosted';
   fields: ConfigField[];
@@ -247,7 +267,6 @@ const PROVIDERS: ProviderDefinition[] = [
 
 const SETTING_DEFAULTS: Record<string, unknown> = {
   'ui.language': 'auto', provider: 'auto', sourceLanguage: 'auto', targetLanguage: 'zh-CN', proxy: '', requestTimeoutMs: 15000,
-  'ai.prompt': DEFAULT_AI_PROMPT,
   maxSelectionChars: 12000, 'document.chunkChars': 3500, 'document.mode': 'smart', 'selection.autoTranslate': false,
   'selection.debounceMs': 650, 'result.showOutputChannel': false, 'result.editorPresentation': 'hover', 'result.terminalPresentation': 'sidebar',
   'googleFree.endpoint': 'https://translate.googleapis.com/translate_a/single',
@@ -259,12 +278,8 @@ const SETTING_DEFAULTS: Record<string, unknown> = {
   'ollama.model': 'qwen2.5:7b'
 };
 
-const ALLOWED_SETTING_KEYS = new Set(Object.keys(SETTING_DEFAULTS));
-const ALLOWED_SECRET_NAMES = new Set<SecretName>([
-  'libreTranslateApiKey', 'deepLApiKey', 'azureApiKey', 'googleCloudApiKey', 'baiduAppId', 'baiduSecret',
-  'tencentSecretId', 'tencentSecretKey', 'openAIApiKey'
-]);
-
+const PROVIDER_SETTING_KEYS = new Set(PROVIDERS.flatMap((provider) => provider.fields.map((field) => field.key)));
+const ALLOWED_SETTING_KEYS = new Set(Object.keys(SETTING_DEFAULTS).filter((key) => !PROVIDER_SETTING_KEYS.has(key)));
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -289,49 +304,58 @@ function configValue(key: string): unknown {
   return value;
 }
 
-function fieldHtml(field: ConfigField, s: PanelStrings): string {
-  const value = configValue(field.key);
+function fieldHtml(field: ConfigField, instance: ProviderInstance, s: PanelStrings): string {
+  const value = instance.settings[field.key] ?? SETTING_DEFAULTS[field.key];
   const label = s[field.label];
   if (field.type === 'json') {
     const text = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value ?? '');
-    return `<label class="field"><span>${escapeHtml(label)}</span><textarea data-setting="${escapeHtml(field.key)}" data-value-type="json" rows="4" placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(text)}</textarea></label>`;
+    return `<label class="field"><span>${escapeHtml(label)}</span><textarea data-instance-setting="${escapeHtml(field.key)}" data-instance-id="${escapeHtml(instance.id)}" data-value-type="json" rows="4" placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(text)}</textarea></label>`;
   }
   const numberLimits = field.key === 'openAI.temperature' ? ' min="0" max="2" step="0.1"' : '';
-  return `<label class="field"><span>${escapeHtml(label)}</span><input data-setting="${escapeHtml(field.key)}" data-value-type="${field.type === 'number' ? 'number' : 'text'}" type="${field.type === 'number' ? 'number' : 'text'}" value="${escapeHtml(value)}" placeholder="${escapeHtml(field.placeholder || '')}"${numberLimits}></label>`;
+  return `<label class="field"><span>${escapeHtml(label)}</span><input data-instance-setting="${escapeHtml(field.key)}" data-instance-id="${escapeHtml(instance.id)}" data-value-type="${field.type === 'number' ? 'number' : 'text'}" type="${field.type === 'number' ? 'number' : 'text'}" value="${escapeHtml(value)}" placeholder="${escapeHtml(field.placeholder || '')}"${numberLimits}></label>`;
 }
 
-function secretHtml(field: SecretField, configured: boolean, s: PanelStrings): string {
+function secretHtml(field: SecretField, configured: boolean, instance: ProviderInstance, s: PanelStrings): string {
   return `<div class="field secret-field" data-secret-row="${field.name}">
     <span>${escapeHtml(s[field.label])}</span>
     <div class="secret-controls">
-      <input type="password" data-secret-input="${field.name}" autocomplete="off" placeholder="${configured ? '••••••••' : ''}">
-      <button class="secondary" data-save-secret="${field.name}">${escapeHtml(s.saveSecret)}</button>
-      <button class="ghost" data-clear-secret="${field.name}" ${configured ? '' : 'disabled'}>${escapeHtml(s.clearSecret)}</button>
+      <input type="password" data-secret-input="${field.name}" data-instance-id="${escapeHtml(instance.id)}" autocomplete="off" placeholder="${configured ? '••••••••' : ''}">
+      <button class="secondary" data-save-secret="${field.name}" data-instance-id="${escapeHtml(instance.id)}">${escapeHtml(s.saveSecret)}</button>
+      <button class="ghost" data-clear-secret="${field.name}" data-instance-id="${escapeHtml(instance.id)}" ${configured ? '' : 'disabled'}>${escapeHtml(s.clearSecret)}</button>
     </div>
     <small data-secret-status="${field.name}" class="${configured ? 'ok' : 'muted'}">${escapeHtml(configured ? s.savedSecret : s.noSecret)}</small>
   </div>`;
 }
 
-function providerCard(def: ProviderDefinition, secretState: Record<string, boolean>, s: PanelStrings): string {
-  const enabled = isProviderEnabled(def.id);
-  const fields = def.fields.map((f) => fieldHtml(f, s)).join('');
-  const secrets = (def.secrets || []).map((f) => secretHtml(f, Boolean(secretState[f.name]), s)).join('');
-  return `<section class="provider-card ${enabled ? 'enabled' : ''}" data-provider-card="${def.id}">
-    <div class="provider-head">
-      <div class="provider-copy">
-        <div class="provider-title-row"><strong>${escapeHtml(def.name)}</strong><span class="tag">${escapeHtml(s[def.category])}</span></div>
-        <p>${escapeHtml(s.providerDescriptions[def.id] || '')}</p>
-      </div>
-      <label class="switch-wrap" title="${escapeHtml(s.enableHint)}">
-        <span data-enabled-label="${def.id}">${escapeHtml(enabled ? s.enabled : s.disabled)}</span>
-        <input type="checkbox" data-provider-toggle="${def.id}" ${enabled ? 'checked' : ''}>
+function providerCard(def: ProviderDefinition, instance: ProviderInstance, s: PanelStrings): string {
+  const enabled = instance.enabled;
+  return `<section class="provider-card ${enabled ? 'enabled' : ''}" data-provider-card="${escapeHtml(instance.id)}" data-provider-name="${escapeHtml(def.name)}" data-provider-kind="${escapeHtml(instance.kind)}">
+    <button type="button" class="drag-handle" draggable="true" data-drag-provider="${escapeHtml(instance.id)}" aria-label="${escapeHtml(s.dragHandle)}：${escapeHtml(instance.name)}" title="${escapeHtml(s.dragHandle)}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" draggable="false"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <div class="provider-copy">
+      <div class="provider-title-row"><strong>${escapeHtml(instance.name)} · ${escapeHtml(def.name)}</strong><span class="tag">${escapeHtml(s[def.category])}</span></div>
+    </div>
+    <div class="provider-controls">
+      <label class="switch-wrap">
+        <span data-enabled-label="${escapeHtml(instance.id)}">${escapeHtml(enabled ? s.enabled : s.disabled)}</span>
+        <input type="checkbox" data-provider-toggle="${escapeHtml(instance.id)}" ${enabled ? 'checked' : ''}>
         <span class="switch"></span>
       </label>
+      <button class="secondary" data-edit-provider="${escapeHtml(instance.id)}">${escapeHtml(s.editEngine)}</button>
+      ${isBuiltInInstance(instance.id) ? '' : `<button class="ghost" data-delete-provider="${escapeHtml(instance.id)}">${escapeHtml(s.deleteEngine)}</button>`}
     </div>
-    <div class="provider-body" ${enabled ? '' : 'hidden'}>
-      <div class="form-grid">${fields}${secrets}</div>
-      <div class="provider-test-row"><button class="secondary" data-test-provider="${def.id}">${escapeHtml(s.testProvider)}</button><span class="test-status muted" data-test-status="${def.id}"></span></div>
-    </div>
+  </section>`;
+}
+
+function providerEditor(def: ProviderDefinition, instance: ProviderInstance, secretState: Record<string, boolean>, s: PanelStrings): string {
+  const fields = def.fields.map((field) => fieldHtml(field, instance, s)).join('');
+  const secrets = (def.secrets || []).map((field) => secretHtml(field, Boolean(secretState[`${instance.id}:${field.name}`]), instance, s)).join('');
+  const isAi = instance.kind === 'openai-compatible' || instance.kind === 'ollama';
+  const prompt = typeof instance.settings['ai.prompt'] === 'string' ? instance.settings['ai.prompt'] : DEFAULT_AI_PROMPT;
+  return `<section class="provider-editor" data-provider-editor="${escapeHtml(instance.id)}" hidden>
+    <div class="editor-header"><div><h2 data-editor-title="${escapeHtml(instance.id)}">${escapeHtml(instance.name)} · ${escapeHtml(def.name)}</h2><p>${escapeHtml(s.providerDescriptions[def.id] || '')}</p></div><button class="ghost" data-close-editor>${escapeHtml(s.closeEditor)}</button></div>
+    <div class="form-grid"><label class="field"><span>${escapeHtml(s.name)}</span><input data-instance-name="${escapeHtml(instance.id)}" maxlength="80" value="${escapeHtml(instance.name)}"></label>${fields}${secrets}</div>
+    ${isAi ? `<div class="instance-prompt"><label class="field"><span>${escapeHtml(s.aiPromptTitle)}</span><textarea data-instance-setting="ai.prompt" data-instance-id="${escapeHtml(instance.id)}" rows="11">${escapeHtml(prompt)}</textarea><small>${escapeHtml(s.aiPromptDescription)}<br>${escapeHtml(s.aiPromptPlaceholders)}</small></label><div class="prompt-actions"><button class="ghost" data-reset-instance-prompt="${escapeHtml(instance.id)}">${escapeHtml(s.resetPrompt)}</button></div></div>` : ''}
+    <div class="provider-test-row"><button class="secondary" data-test-provider="${escapeHtml(instance.id)}">${escapeHtml(s.testProvider)}</button><span class="test-status muted" data-test-status="${escapeHtml(instance.id)}"></span></div>
   </section>`;
 }
 
@@ -343,8 +367,9 @@ export class SettingsPanel implements vscode.Disposable {
   private static current: SettingsPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
   private readonly disposables: vscode.Disposable[] = [];
+  private messageQueue: Promise<void> = Promise.resolve();
 
-  static async show(extensionUri: vscode.Uri, secrets: Secrets, manager: TranslationManager, onStateChanged?: () => Promise<void>): Promise<void> {
+  static async show(extensionUri: vscode.Uri, version: string, secrets: Secrets, manager: TranslationManager, onStateChanged?: () => Promise<void>): Promise<void> {
     if (SettingsPanel.current) {
       SettingsPanel.current.panel.reveal(vscode.ViewColumn.Active);
       await SettingsPanel.current.render();
@@ -356,13 +381,14 @@ export class SettingsPanel implements vscode.Disposable {
       vscode.ViewColumn.Active,
       { enableScripts: true, retainContextWhenHidden: true }
     );
-    SettingsPanel.current = new SettingsPanel(panel, extensionUri, secrets, manager, onStateChanged);
+    SettingsPanel.current = new SettingsPanel(panel, extensionUri, version, secrets, manager, onStateChanged);
     await SettingsPanel.current.render();
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
+    private readonly version: string,
     private readonly secrets: Secrets,
     private readonly manager: TranslationManager,
     private readonly onStateChanged?: () => Promise<void>
@@ -370,7 +396,9 @@ export class SettingsPanel implements vscode.Disposable {
     this.panel = panel;
     void this.extensionUri; // reserved for future bundled webview assets
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
-    this.panel.webview.onDidReceiveMessage((message) => void this.onMessage(message), null, this.disposables);
+    this.panel.webview.onDidReceiveMessage((message) => {
+      this.messageQueue = this.messageQueue.then(() => this.onMessage(message));
+    }, null, this.disposables);
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration(CONFIG_SECTION) && SettingsPanel.current === this) {
         this.post({ type: 'externalConfigurationChanged' });
@@ -389,7 +417,12 @@ export class SettingsPanel implements vscode.Disposable {
 
   private async secretState(): Promise<Record<string, boolean>> {
     const state: Record<string, boolean> = {};
-    for (const name of ALLOWED_SECRET_NAMES) state[name] = Boolean(await this.secrets.get(name));
+    for (const instance of getProviderInstances()) {
+      const def = PROVIDERS.find((provider) => provider.id === instance.kind);
+      for (const field of def?.secrets || []) {
+        state[`${instance.id}:${field.name}`] = Boolean(await this.secrets.getForInstance(instance.id, field.name));
+      }
+    }
     return state;
   }
 
@@ -402,9 +435,75 @@ export class SettingsPanel implements vscode.Disposable {
   private async onMessage(message: any): Promise<void> {
     try {
       if (!message || typeof message.type !== 'string') return;
+      if (message.type === 'reorderProviders') {
+        const order: unknown = message.order;
+        const instances = getProviderInstances();
+        if (!Array.isArray(order) || order.length !== instances.length ||
+          !order.every((id) => typeof id === 'string') || new Set(order).size !== instances.length) return;
+        const byId = new Map(instances.map((instance) => [instance.id, instance]));
+        if (!order.every((id) => byId.has(id))) return;
+        await saveProviderInstances(order.map((id) => byId.get(id)!));
+        await this.onStateChanged?.();
+        this.post({ type: 'saved' });
+        return;
+      }
+      if (message.type === 'addProvider') {
+        const kind = message.kind as ProviderKind;
+        const def = PROVIDERS.find((provider) => provider.id === kind);
+        if (!def) return;
+        const instances = getProviderInstances();
+        const name = String(message.name || '').trim().slice(0, 80) || def.name;
+        instances.push({ id: `${kind}-${randomBytes(6).toString('hex')}`, kind, name, enabled: true, settings: {} });
+        await saveProviderInstances(instances);
+        await this.onStateChanged?.();
+        await this.render();
+        return;
+      }
+      if (message.type === 'removeProvider') {
+        const id = String(message.provider || '');
+        const instances = getProviderInstances();
+        if (isBuiltInInstance(id) || !instances.some((instance) => instance.id === id)) return;
+        await this.secrets.deleteInstance(id);
+        await saveProviderInstances(instances.filter((instance) => instance.id !== id));
+        await this.onStateChanged?.();
+        await this.render();
+        return;
+      }
+      if (message.type === 'renameProvider' || message.type === 'updateProviderSetting') {
+        const id = String(message.provider || '');
+        const instances = getProviderInstances();
+        const instance = instances.find((item) => item.id === id);
+        if (!instance) return;
+        if (message.type === 'renameProvider') {
+          const name = String(message.name || '').trim().slice(0, 80);
+          if (!name) throw new Error('Engine name cannot be empty.');
+          instance.name = name;
+        } else {
+          const key = String(message.key || '');
+          const def = PROVIDERS.find((provider) => provider.id === instance.kind);
+          const isAiPrompt = key === 'ai.prompt' && (instance.kind === 'openai-compatible' || instance.kind === 'ollama');
+          if (!isAiPrompt && !def?.fields.some((field) => field.key === key)) return;
+          let value: unknown = message.value;
+          if (isAiPrompt && typeof value !== 'string') throw new Error('Invalid AI prompt.');
+          if (key === 'openAI.extraHeaders') {
+            value = typeof value === 'string' && value.trim() ? JSON.parse(value) : {};
+            if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error('Extra headers must be a JSON object.');
+          }
+          if (key === 'openAI.temperature') {
+            value = Number(value);
+            if (!Number.isFinite(value) || (value as number) < 0 || (value as number) > 2) throw new Error('Temperature must be between 0 and 2.');
+          }
+          instance.settings[key] = value;
+        }
+        await saveProviderInstances(instances);
+        await this.onStateChanged?.();
+        this.post({ type: 'saved' });
+        if (message.type === 'renameProvider') this.post({ type: 'providerRenamed', provider: id, name: instance.name });
+        return;
+      }
       if (message.type === 'toggleProvider') {
-        const id = message.provider as ProviderId;
-        if (!ALL_PROVIDER_IDS.includes(id) || typeof message.enabled !== 'boolean') return;
+        const id = String(message.provider || '');
+        if (!getProviderInstances().some((instance) => instance.id === id) || typeof message.enabled !== 'boolean') return;
         await setProviderEnabled(id, message.enabled);
         this.post({ type: 'saved', setting: `provider:${id}` });
         await this.onStateChanged?.();
@@ -414,14 +513,9 @@ export class SettingsPanel implements vscode.Disposable {
         const key = String(message.key || '');
         if (!ALLOWED_SETTING_KEYS.has(key)) return;
         let value: unknown = message.value;
-        if (key === 'openAI.extraHeaders' && typeof value === 'string') {
-          value = value.trim() ? JSON.parse(value) : {};
-          if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error('Extra headers must be a JSON object.');
-        }
-        if (['requestTimeoutMs', 'maxSelectionChars', 'document.chunkChars', 'selection.debounceMs', 'openAI.temperature'].includes(key)) {
+        if (['requestTimeoutMs', 'maxSelectionChars', 'document.chunkChars', 'selection.debounceMs'].includes(key)) {
           const numericValue = Number(value);
           if (!Number.isFinite(numericValue)) throw new Error(`Invalid number for ${key}`);
-          if (key === 'openAI.temperature' && (numericValue < 0 || numericValue > 2)) throw new Error('Temperature must be between 0 and 2.');
           value = numericValue;
         }
         if (['selection.autoTranslate', 'result.showOutputChannel'].includes(key)) value = Boolean(value);
@@ -438,26 +532,30 @@ export class SettingsPanel implements vscode.Disposable {
         return;
       }
       if (message.type === 'saveSecret') {
+        const id = String(message.provider || '');
+        const instance = getProviderInstances().find((item) => item.id === id);
         const name = message.name as SecretName;
-        if (!ALLOWED_SECRET_NAMES.has(name)) return;
+        if (!instance || !PROVIDERS.find((provider) => provider.id === instance.kind)?.secrets?.some((field) => field.name === name)) return;
         const value = String(message.value || '').trim();
         if (!value) return;
-        await this.secrets.set(name, value);
-        this.post({ type: 'secretState', name, configured: true });
+        await this.secrets.setForInstance(id, name, value);
+        this.post({ type: 'secretState', provider: id, name, configured: true });
         await this.onStateChanged?.();
         return;
       }
       if (message.type === 'clearSecret') {
+        const id = String(message.provider || '');
+        const instance = getProviderInstances().find((item) => item.id === id);
         const name = message.name as SecretName;
-        if (!ALLOWED_SECRET_NAMES.has(name)) return;
-        await this.secrets.delete(name);
-        this.post({ type: 'secretState', name, configured: false });
+        if (!instance || !PROVIDERS.find((provider) => provider.id === instance.kind)?.secrets?.some((field) => field.name === name)) return;
+        await this.secrets.deleteForInstance(id, name);
+        this.post({ type: 'secretState', provider: id, name, configured: false });
         await this.onStateChanged?.();
         return;
       }
       if (message.type === 'testProvider') {
-        const id = message.provider as ProviderId;
-        if (!ALL_PROVIDER_IDS.includes(id)) return;
+        const id = String(message.provider || '');
+        if (!getProviderInstances().some((instance) => instance.id === id)) return;
         this.post({ type: 'providerTestStarted', provider: id });
         try {
           const result = await this.manager.testProvider(id);
@@ -469,6 +567,10 @@ export class SettingsPanel implements vscode.Disposable {
       }
       if (message.type === 'openFeedback') {
         await vscode.env.openExternal(vscode.Uri.parse('mailto:xinghehy@qq.com'));
+        return;
+      }
+      if (message.type === 'openGitHub') {
+        await vscode.env.openExternal(vscode.Uri.parse('https://github.com/XingHehy/polylingo-vscode'));
         return;
       }
       if (message.type === 'openNativeSettings') {
@@ -483,14 +585,17 @@ export class SettingsPanel implements vscode.Disposable {
     const webview = this.panel.webview;
     const n = nonce();
     const currentProvider = getProvider();
+    const instances = getProviderInstances();
     const source = String(configValue('sourceLanguage'));
     const target = String(configValue('targetLanguage'));
     const uiLanguage = String(configValue('ui.language'));
     const languageOptions = COMMON_LANGUAGES.map(([code, name]) => option(code, `${name} · ${code}`, source)).join('');
     const targetOptions = COMMON_LANGUAGES.filter(([code]) => code !== 'auto').map(([code, name]) => option(code, `${name} · ${code}`, target)).join('');
     const providerOptions = [`<option value="auto" ${currentProvider === 'auto' ? 'selected' : ''}>${escapeHtml(s.auto)}</option>`]
-      .concat(PROVIDERS.map((p) => `<option value="${p.id}" data-provider-option="${p.id}" ${isProviderEnabled(p.id) ? '' : 'disabled'} ${currentProvider === p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`)).join('');
-    const cards = PROVIDERS.map((p) => providerCard(p, secretState, s)).join('');
+      .concat(instances.map((instance) => `<option value="${escapeHtml(instance.id)}" data-provider-option="${escapeHtml(instance.id)}" ${instance.enabled ? '' : 'disabled'} ${currentProvider === instance.id ? 'selected' : ''}>${escapeHtml(instance.name)} · ${escapeHtml(PROVIDERS.find((provider) => provider.id === instance.kind)?.name || instance.kind)}</option>`)).join('');
+    const cards = instances.map((instance) => providerCard(PROVIDERS.find((provider) => provider.id === instance.kind)!, instance, s)).join('');
+    const editors = instances.map((instance) => providerEditor(PROVIDERS.find((provider) => provider.id === instance.kind)!, instance, secretState, s)).join('');
+    const addOptions = PROVIDERS.map((provider) => option(provider.id, provider.name, '')).join('');
     const uiOptions = [
       ['auto', `${s.auto} (${vscode.env.language})`], ['zh-CN', '简体中文'], ['zh-TW', '繁體中文'], ['en', 'English'], ['ja', '日本語'], ['ko', '한국어']
     ].map(([value, label]) => option(value, label, uiLanguage)).join('');
@@ -506,9 +611,6 @@ export class SettingsPanel implements vscode.Disposable {
     const terminalPresentationOptions = [
       ['sidebar', s.presentationSidebar], ['notification', s.presentationNotification], ['editor', s.presentationEditor]
     ].map(([value, label]) => option(value, label, terminalPresentation)).join('');
-    const aiEnabled = isProviderEnabled('openai-compatible') || isProviderEnabled('ollama');
-    const aiPrompt = String(configValue('ai.prompt'));
-
     return `<!DOCTYPE html>
 <html lang="${escapeHtml(getUiLanguage())}">
 <head>
@@ -535,17 +637,35 @@ export class SettingsPanel implements vscode.Disposable {
   textarea { resize: vertical; min-height: 78px; font-family: var(--vscode-editor-font-family); }
   .check-row { display: flex; gap: 10px; align-items: flex-start; }
   .check-row input { width: auto; margin-top: 2px; }
-  .provider-list { display: flex; flex-direction: column; gap: 10px; }
-  .provider-card { border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 10px; background: var(--vscode-sideBar-background); overflow: hidden; transition: border-color .12s ease; }
-  .provider-card.enabled { border-color: var(--vscode-focusBorder); }
-  .provider-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 15px 18px; }
-  .provider-copy { min-width: 0; }
-  .provider-copy p { margin: 5px 0 0; color: var(--vscode-descriptionForeground); }
+  .provider-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 10px; overflow: hidden; background: var(--vscode-sideBar-background); }
+  .engine-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .engine-heading h2 { margin-bottom: 4px; }
+  .drag-hint { margin: 0 0 14px; color: var(--vscode-descriptionForeground); font-size: 12px; }
+  .instance-prompt { margin-top: 18px; }
+  .instance-prompt textarea { min-height: 200px; }
+  .provider-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 13px 16px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
+  .provider-card:last-child { border-bottom: 0; }
+  .provider-card.dragging { opacity: .45; }
+  .provider-card.drop-before { box-shadow: inset 0 3px var(--vscode-focusBorder); }
+  .provider-card.drop-after { box-shadow: inset 0 -3px var(--vscode-focusBorder); }
+  .drag-handle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 28px; width: 28px; height: 32px; padding: 0; color: var(--vscode-descriptionForeground); background: transparent; cursor: grab; }
+  .drag-handle:hover, .drag-handle:focus { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); }
+  .drag-handle:active { cursor: grabbing; }
+  .provider-card:not(.enabled) .provider-copy { opacity: .66; }
+  .provider-copy { min-width: 0; flex: 1; }
+  .provider-controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .provider-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
   .tag { font-size: 11px; font-weight: 600; color: var(--vscode-badge-foreground); background: var(--vscode-badge-background); border-radius: 10px; padding: 2px 8px; }
-  .provider-body { padding: 4px 18px 18px; border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); animation: reveal .12s ease-out; }
-  .provider-body[hidden], #ai-prompt-section[hidden] { display: none !important; }
-  @keyframes reveal { from { opacity: .4; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+  .editor-backdrop[hidden], .editor-drawer[hidden], .provider-editor[hidden], .add-engine-panel[hidden] { display: none !important; }
+  .editor-backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .45); }
+  .editor-drawer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 21; max-height: min(82vh, 820px); overflow-y: auto; background: var(--vscode-editor-background); border-top: 1px solid var(--vscode-focusBorder); border-radius: 12px 12px 0 0; box-shadow: 0 -10px 35px rgba(0, 0, 0, .2); animation: drawer-in .16s ease-out; }
+  .editor-inner { max-width: 980px; margin: 0 auto; padding: 20px 28px 32px; }
+  .editor-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+  .editor-header h2 { margin: 0; }
+  .editor-header p { margin: 6px 0 0; color: var(--vscode-descriptionForeground); }
+  #editor-save-status { min-height: 20px; margin-bottom: 8px; color: var(--vscode-descriptionForeground); }
+  #editor-save-status.error { color: var(--vscode-errorForeground); }
+  @keyframes drawer-in { from { transform: translateY(18px); opacity: .7; } to { transform: translateY(0); opacity: 1; } }
   .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 18px; padding-top: 14px; }
   .provider-test-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
   .test-status { min-width: 0; overflow-wrap: anywhere; }
@@ -572,10 +692,12 @@ export class SettingsPanel implements vscode.Disposable {
   .switch-wrap input:checked + .switch::after { transform: translateX(16px); background: var(--vscode-button-foreground); }
   details.section summary { cursor: pointer; padding: 16px 18px; font-weight: 600; user-select: none; }
   details.section[open] summary { border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
-  .footer { margin-top: 22px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .footer { margin-top: 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+  .footer-info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .footer-version { color: var(--vscode-descriptionForeground); font-size: 12px; }
   #save-status { min-height: 20px; color: var(--vscode-descriptionForeground); }
   #save-status.error { color: var(--vscode-errorForeground); }
-  @media (max-width: 720px) { .general-grid, .advanced-grid, .form-grid { grid-template-columns: 1fr; } .provider-head { align-items: flex-start; } .secret-controls { grid-template-columns: 1fr; } .secret-field { grid-column: auto; } }
+  @media (max-width: 720px) { .general-grid, .advanced-grid, .form-grid { grid-template-columns: 1fr; } .provider-card { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px 12px; } .provider-controls { grid-column: 2; width: 100%; justify-content: flex-end; flex-wrap: wrap; } .secret-controls { grid-template-columns: 1fr; } .secret-field { grid-column: auto; } }
 </style>
 </head>
 <body>
@@ -597,18 +719,8 @@ export class SettingsPanel implements vscode.Disposable {
     </div>
   </section>
 
-  <h2>${escapeHtml(s.engines)}</h2>
-  <div class="provider-list">${cards}</div>
-
-  <div id="ai-prompt-section" ${aiEnabled ? '' : 'hidden'}>
-    <h2>${escapeHtml(s.aiPromptTitle)}</h2>
-    <section class="section">
-      <div class="advanced-grid" style="grid-template-columns:1fr">
-        <label class="field"><span>${escapeHtml(s.aiPromptTitle)}</span><textarea id="ai-prompt" data-setting="ai.prompt" data-value-type="text" rows="11">${escapeHtml(aiPrompt)}</textarea><small>${escapeHtml(s.aiPromptDescription)}<br>${escapeHtml(s.aiPromptPlaceholders)}</small></label>
-        <div class="prompt-actions"><button class="ghost" id="reset-ai-prompt">${escapeHtml(s.resetPrompt)}</button></div>
-      </div>
-    </section>
-  </div>
+  <div class="engine-heading"><div><h2>${escapeHtml(s.engines)}</h2><p class="drag-hint">${escapeHtml(s.dragHint)}</p></div><button id="add-engine">${escapeHtml(s.addEngine)}</button></div>
+  <div class="provider-list" id="provider-list">${cards}</div>
 
   <h2>${escapeHtml(s.advanced)}</h2>
   <details class="section">
@@ -623,20 +735,125 @@ export class SettingsPanel implements vscode.Disposable {
     </div>
   </details>
 
-  <div class="footer"><div><div id="save-status"></div><div class="feedback">${escapeHtml(s.feedback)}：<button class="link-button" id="feedback-email">xinghehy@qq.com</button></div></div><button class="ghost" id="open-native">${escapeHtml(s.nativeSettings)}</button></div>
+  <div class="footer"><div class="footer-info"><div id="save-status"></div><div class="feedback">${escapeHtml(s.feedback)}：<button class="link-button" id="feedback-email">xinghehy@qq.com</button> · GitHub：<button class="link-button" id="github-link">XingHehy/polylingo-vscode</button></div><div class="footer-version">PolyLingo ${escapeHtml(s.version)} ${escapeHtml(this.version)}</div></div><button class="ghost" id="open-native">${escapeHtml(s.nativeSettings)}</button></div>
 </div>
+<div class="editor-backdrop" id="editor-backdrop" hidden></div>
+<div class="editor-drawer" id="editor-drawer" role="dialog" aria-modal="true" aria-label="${escapeHtml(s.editEngine)}" hidden><div class="editor-inner"><div id="editor-save-status"></div>
+  <section class="add-engine-panel" id="add-engine-panel" hidden>
+    <div class="editor-header"><h2>${escapeHtml(s.addEngine)}</h2><button class="ghost" data-close-editor>${escapeHtml(s.closeEditor)}</button></div>
+    <div class="form-grid"><label class="field"><span>${escapeHtml(s.engines)}</span><select id="add-engine-kind">${addOptions}</select></label><label class="field"><span>${escapeHtml(s.name)}</span><input id="add-engine-name" maxlength="80" placeholder="${escapeHtml(PROVIDERS[0].name)}"></label></div>
+    <div class="provider-test-row"><button id="confirm-add-engine">${escapeHtml(s.addEngine)}</button></div>
+  </section>${editors}</div></div>
 <script nonce="${n}">
 (() => {
   const vscode = acquireVsCodeApi();
-  const strings = ${JSON.stringify({ enabled: s.enabled, disabled: s.disabled, saved: s.saved, saving: s.saving, error: s.error, savedSecret: s.savedSecret, noSecret: s.noSecret, testProvider: s.testProvider, testingProvider: s.testingProvider, providerAvailable: s.providerAvailable, providerUnavailable: s.providerUnavailable })};
+  const strings = ${JSON.stringify({ enabled: s.enabled, disabled: s.disabled, saved: s.saved, saving: s.saving, error: s.error, savedSecret: s.savedSecret, noSecret: s.noSecret, testProvider: s.testProvider, testingProvider: s.testingProvider, providerAvailable: s.providerAvailable, providerUnavailable: s.providerUnavailable, addEngine: s.addEngine, editEngine: s.editEngine })};
   const status = document.getElementById('save-status');
+  const editorStatus = document.getElementById('editor-save-status');
+  const drawer = document.getElementById('editor-drawer');
+  const backdrop = document.getElementById('editor-backdrop');
+  const providerList = document.getElementById('provider-list');
+  let draggedProvider;
+  function providerOrder() {
+    return Array.from(providerList.querySelectorAll('[data-provider-card]')).map((card) => card.dataset.providerCard);
+  }
+  function clearDragState() {
+    providerList.querySelectorAll('.dragging, .drop-before, .drop-after').forEach((card) => card.classList.remove('dragging', 'drop-before', 'drop-after'));
+    draggedProvider = undefined;
+  }
+  function saveProviderOrder(previousOrder) {
+    const order = providerOrder();
+    if (order.every((id, index) => id === previousOrder[index])) return;
+    showStatus(strings.saving);
+    vscode.postMessage({ type: 'reorderProviders', order });
+  }
+  providerList.querySelectorAll('[data-drag-provider]').forEach((handle) => {
+    handle.addEventListener('dragstart', (event) => {
+      draggedProvider = handle.dataset.dragProvider;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedProvider);
+      handle.closest('[data-provider-card]').classList.add('dragging');
+    });
+    handle.addEventListener('dragend', clearDragState);
+    handle.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      const card = handle.closest('[data-provider-card]');
+      const other = event.key === 'ArrowUp' ? card.previousElementSibling : card.nextElementSibling;
+      if (!other) return;
+      event.preventDefault();
+      const previousOrder = providerOrder();
+      if (event.key === 'ArrowUp') providerList.insertBefore(card, other);
+      else providerList.insertBefore(other, card);
+      saveProviderOrder(previousOrder);
+    });
+  });
+  providerList.addEventListener('dragover', (event) => {
+    if (!draggedProvider) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const target = event.target.closest('[data-provider-card]');
+    providerList.querySelectorAll('.drop-before, .drop-after').forEach((card) => card.classList.remove('drop-before', 'drop-after'));
+    if (!target || target.dataset.providerCard === draggedProvider) return;
+    target.classList.add(event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2 ? 'drop-before' : 'drop-after');
+  });
+  providerList.addEventListener('drop', (event) => {
+    if (!draggedProvider) return;
+    event.preventDefault();
+    const source = providerList.querySelector('[data-provider-card="' + draggedProvider + '"]');
+    const target = event.target.closest('[data-provider-card]');
+    const previousOrder = providerOrder();
+    if (source && target && source !== target) {
+      const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
+      providerList.insertBefore(source, before ? target : target.nextElementSibling);
+    } else if (source && !target) {
+      providerList.appendChild(source);
+    }
+    clearDragState();
+    saveProviderOrder(previousOrder);
+  });
+  const previousState = vscode.getState() || {};
+  let drawerTrigger;
+  requestAnimationFrame(() => window.scrollTo(0, previousState.scrollY || 0));
+  window.addEventListener('scroll', () => vscode.setState({ scrollY: window.scrollY }));
   let statusTimer;
   function showStatus(text, isError = false) {
     clearTimeout(statusTimer);
-    status.textContent = text;
-    status.classList.toggle('error', isError);
-    if (!isError) statusTimer = setTimeout(() => { status.textContent = ''; }, 1400);
+    for (const element of [status, editorStatus]) {
+      element.textContent = text;
+      element.classList.toggle('error', isError);
+    }
+    if (!isError) statusTimer = setTimeout(() => { status.textContent = ''; editorStatus.textContent = ''; }, 1400);
   }
+  function closeEditor() {
+    drawer.hidden = true;
+    backdrop.hidden = true;
+    document.body.style.overflow = '';
+    document.getElementById('add-engine-panel').hidden = true;
+    document.querySelectorAll('[data-provider-editor]').forEach((editor) => { editor.hidden = true; });
+    drawerTrigger?.focus();
+  }
+  function showDrawer(panel, trigger) {
+    drawerTrigger = trigger;
+    document.getElementById('add-engine-panel').hidden = panel.id !== 'add-engine-panel';
+    document.querySelectorAll('[data-provider-editor]').forEach((item) => { item.hidden = item !== panel; });
+    editorStatus.textContent = '';
+    drawer.hidden = false;
+    drawer.setAttribute('aria-label', panel.id === 'add-engine-panel' ? strings.addEngine : strings.editEngine);
+    backdrop.hidden = false;
+    drawer.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+    (panel.querySelector('select, [data-instance-name]') || panel.querySelector('[data-close-editor]')).focus();
+  }
+  document.querySelectorAll('[data-edit-provider]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const editor = document.querySelector('[data-provider-editor="' + button.dataset.editProvider + '"]');
+      if (!editor) return;
+      showDrawer(editor, button);
+    });
+  });
+  document.querySelectorAll('[data-close-editor]').forEach((button) => button.addEventListener('click', closeEditor));
+  backdrop.addEventListener('click', closeEditor);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !drawer.hidden) closeEditor(); });
   function valueFor(el) {
     const type = el.dataset.valueType || 'text';
     if (type === 'boolean') return !!el.checked;
@@ -649,24 +866,45 @@ export class SettingsPanel implements vscode.Disposable {
       vscode.postMessage({ type: 'updateSetting', key: el.dataset.setting, value: valueFor(el) });
     });
   });
+  document.querySelectorAll('[data-instance-setting]').forEach((el) => {
+    el.addEventListener('change', () => {
+      showStatus(strings.saving);
+      vscode.postMessage({ type: 'updateProviderSetting', provider: el.dataset.instanceId, key: el.dataset.instanceSetting, value: valueFor(el) });
+    });
+  });
+  document.querySelectorAll('[data-instance-name]').forEach((el) => {
+    el.addEventListener('change', () => {
+      showStatus(strings.saving);
+      vscode.postMessage({ type: 'renameProvider', provider: el.dataset.instanceName, name: el.value });
+    });
+  });
+  document.getElementById('add-engine').addEventListener('click', () => {
+    showDrawer(document.getElementById('add-engine-panel'), document.getElementById('add-engine'));
+  });
+  document.getElementById('add-engine-kind').addEventListener('change', (event) => {
+    const selected = event.target.selectedOptions[0];
+    document.getElementById('add-engine-name').placeholder = selected ? selected.textContent : '';
+  });
+  document.getElementById('confirm-add-engine').addEventListener('click', () => {
+    showStatus(strings.saving);
+    vscode.postMessage({ type: 'addProvider', kind: document.getElementById('add-engine-kind').value, name: document.getElementById('add-engine-name').value });
+  });
+  document.querySelectorAll('[data-delete-provider]').forEach((button) => {
+    button.addEventListener('click', () => {
+      showStatus(strings.saving);
+      vscode.postMessage({ type: 'removeProvider', provider: button.dataset.deleteProvider });
+    });
+  });
   document.querySelectorAll('[data-provider-toggle]').forEach((el) => {
     el.addEventListener('change', () => {
       const id = el.dataset.providerToggle;
       const enabled = !!el.checked;
       const card = document.querySelector('[data-provider-card="' + id + '"]');
-      const body = card && card.querySelector('.provider-body');
       const label = document.querySelector('[data-enabled-label="' + id + '"]');
       if (card) card.classList.toggle('enabled', enabled);
-      if (body) body.hidden = !enabled;
       if (label) label.textContent = enabled ? strings.enabled : strings.disabled;
       const option = document.querySelector('[data-provider-option="' + id + '"]');
       if (option) option.disabled = !enabled;
-      const aiSection = document.getElementById('ai-prompt-section');
-      if (aiSection && (id === 'openai-compatible' || id === 'ollama')) {
-        const openai = document.querySelector('[data-provider-toggle="openai-compatible"]');
-        const ollama = document.querySelector('[data-provider-toggle="ollama"]');
-        aiSection.hidden = !(openai && openai.checked) && !(ollama && ollama.checked);
-      }
       const providerSelect = document.getElementById('provider-select');
       if (!enabled && providerSelect && providerSelect.value === id) {
         providerSelect.value = 'auto';
@@ -688,27 +926,32 @@ export class SettingsPanel implements vscode.Disposable {
   document.querySelectorAll('[data-save-secret]').forEach((button) => {
     button.addEventListener('click', () => {
       const name = button.dataset.saveSecret;
-      const input = document.querySelector('[data-secret-input="' + name + '"]');
+      const editor = button.closest('[data-provider-editor]');
+      const input = editor && editor.querySelector('[data-secret-input="' + name + '"]');
       if (!input || !input.value.trim()) return;
       showStatus(strings.saving);
-      vscode.postMessage({ type: 'saveSecret', name, value: input.value });
+      vscode.postMessage({ type: 'saveSecret', provider: button.dataset.instanceId, name, value: input.value });
       input.value = '';
     });
   });
   document.querySelectorAll('[data-clear-secret]').forEach((button) => {
     button.addEventListener('click', () => {
       showStatus(strings.saving);
-      vscode.postMessage({ type: 'clearSecret', name: button.dataset.clearSecret });
+      vscode.postMessage({ type: 'clearSecret', provider: button.dataset.instanceId, name: button.dataset.clearSecret });
     });
   });
-  const resetPrompt = document.getElementById('reset-ai-prompt');
-  if (resetPrompt) resetPrompt.addEventListener('click', () => {
-    const textarea = document.getElementById('ai-prompt');
-    if (textarea) textarea.value = ${JSON.stringify(DEFAULT_AI_PROMPT)};
-    showStatus(strings.saving);
-    vscode.postMessage({ type: 'updateSetting', key: 'ai.prompt', value: ${JSON.stringify(DEFAULT_AI_PROMPT)} });
+  document.querySelectorAll('[data-reset-instance-prompt]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const editor = button.closest('[data-provider-editor]');
+      const textarea = editor && editor.querySelector('[data-instance-setting="ai.prompt"]');
+      if (!textarea) return;
+      textarea.value = ${JSON.stringify(DEFAULT_AI_PROMPT)};
+      showStatus(strings.saving);
+      vscode.postMessage({ type: 'updateProviderSetting', provider: button.dataset.resetInstancePrompt, key: 'ai.prompt', value: textarea.value });
+    });
   });
   document.getElementById('feedback-email').addEventListener('click', () => vscode.postMessage({ type: 'openFeedback' }));
+  document.getElementById('github-link').addEventListener('click', () => vscode.postMessage({ type: 'openGitHub' }));
   document.getElementById('open-native').addEventListener('click', () => vscode.postMessage({ type: 'openNativeSettings' }));
   window.addEventListener('message', (event) => {
     const message = event.data || {};
@@ -730,8 +973,9 @@ export class SettingsPanel implements vscode.Disposable {
       }
     }
     if (message.type === 'secretState') {
-      const statusEl = document.querySelector('[data-secret-status="' + message.name + '"]');
-      const clear = document.querySelector('[data-clear-secret="' + message.name + '"]');
+      const editor = document.querySelector('[data-provider-editor="' + message.provider + '"]');
+      const statusEl = editor && editor.querySelector('[data-secret-status="' + message.name + '"]');
+      const clear = editor && editor.querySelector('[data-clear-secret="' + message.name + '"]');
       if (statusEl) {
         statusEl.textContent = message.configured ? strings.savedSecret : strings.noSecret;
         statusEl.classList.toggle('ok', !!message.configured);
@@ -739,6 +983,16 @@ export class SettingsPanel implements vscode.Disposable {
       }
       if (clear) clear.disabled = !message.configured;
       showStatus(strings.saved);
+    }
+    if (message.type === 'providerRenamed') {
+      const card = document.querySelector('[data-provider-card="' + message.provider + '"]');
+      const title = card && card.querySelector('.provider-title-row strong');
+      const option = document.querySelector('[data-provider-option="' + message.provider + '"]');
+      const providerName = card && card.dataset.providerName;
+      const editorTitle = document.querySelector('[data-editor-title="' + message.provider + '"]');
+      if (title && providerName) title.textContent = message.name + ' · ' + providerName;
+      if (option && providerName) option.textContent = message.name + ' · ' + providerName;
+      if (editorTitle && providerName) editorTitle.textContent = message.name + ' · ' + providerName;
     }
     if (message.type === 'externalConfigurationChanged') {
       // Keep the panel stable while the user is typing. Values changed through

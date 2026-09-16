@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
-import { ProviderId } from './types';
+import { ProviderInstance, ProviderKind } from './types';
+import { currentProviderInstance } from './providerScope';
 
 export const CONFIG_SECTION = 'polyLingo';
 
-export const ALL_PROVIDER_IDS: ProviderId[] = [
+export const ALL_PROVIDER_IDS: ProviderKind[] = [
   'google-free',
   'bing-web',
   'mymemory',
@@ -17,68 +18,81 @@ export const ALL_PROVIDER_IDS: ProviderId[] = [
   'ollama'
 ];
 
-const PROVIDER_ENABLED_KEYS: Record<Exclude<ProviderId, 'auto'>, string> = {
-  'google-free': 'googleFree.enabled',
-  'bing-web': 'bingWeb.enabled',
-  mymemory: 'mymemory.enabled',
-  libretranslate: 'libreTranslate.enabled',
-  deepl: 'deepl.enabled',
-  azure: 'azure.enabled',
-  'google-cloud': 'googleCloud.enabled',
-  baidu: 'baidu.enabled',
-  tencent: 'tencent.enabled',
-  'openai-compatible': 'openAI.enabled',
-  ollama: 'ollama.enabled'
+const BUILTIN_KINDS: ProviderKind[] = ['google-free', 'bing-web', 'mymemory'];
+export const PROVIDER_NAMES: Record<ProviderKind, string> = {
+  'google-free': 'Google Free', 'bing-web': 'Bing Web', mymemory: 'MyMemory',
+  libretranslate: 'LibreTranslate', deepl: 'DeepL', azure: 'Azure Translator',
+  'google-cloud': 'Google Cloud Translation', baidu: 'Baidu Translate',
+  tencent: 'Tencent Cloud TMT', 'openai-compatible': 'OpenAI Compatible', ollama: 'Ollama'
 };
+const INSTANCE_SETTING_PREFIXES = [
+  'googleFree.', 'bingWeb.', 'mymemory.', 'libreTranslate.', 'deepl.',
+  'azure.', 'googleCloud.', 'baidu.', 'tencent.', 'openAI.', 'ollama.'
+];
 
-const DEFAULT_PROVIDER_ENABLED: Record<Exclude<ProviderId, 'auto'>, boolean> = {
-  'google-free': true,
-  'bing-web': true,
-  mymemory: true,
-  libretranslate: false,
-  deepl: false,
-  azure: false,
-  'google-cloud': false,
-  baidu: false,
-  tencent: false,
-  'openai-compatible': false,
-  ollama: false
-};
+export function isBuiltInInstance(id: string): boolean {
+  return BUILTIN_KINDS.includes(id as ProviderKind);
+}
+
+export function getProviderInstances(): ProviderInstance[] {
+  const saved = config().get<ProviderInstance[]>('providerInstances');
+  const instances: ProviderInstance[] = [];
+  const seen = new Set<string>();
+  for (const item of Array.isArray(saved) ? saved : []) {
+    if (!item || typeof item.id !== 'string' || !/^[a-z0-9-]+$/.test(item.id) || seen.has(item.id)) continue;
+    if (!ALL_PROVIDER_IDS.includes(item.kind)) continue;
+    if (isBuiltInInstance(item.id) && item.kind !== item.id) continue;
+    seen.add(item.id);
+    instances.push({
+      id: item.id, kind: item.kind,
+      name: typeof item.name === 'string' && item.name.trim() ? item.name.trim().slice(0, 80) : PROVIDER_NAMES[item.kind],
+      enabled: item.enabled === true,
+      settings: item.settings && typeof item.settings === 'object' && !Array.isArray(item.settings) ? item.settings : {}
+    });
+  }
+  for (const kind of [...BUILTIN_KINDS].reverse()) {
+    if (!seen.has(kind)) instances.unshift({ id: kind, kind, name: PROVIDER_NAMES[kind], enabled: true, settings: {} });
+  }
+  return instances;
+}
+
+export async function saveProviderInstances(instances: ProviderInstance[]): Promise<void> {
+  const selected = config().get<string>('provider', 'auto');
+  await config().update('providerInstances', instances, vscode.ConfigurationTarget.Global);
+  if (selected !== 'auto' && !instances.some((instance) => instance.id === selected && instance.enabled)) {
+    await setGlobalSetting('provider', 'auto');
+  }
+}
 
 export function config(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration(CONFIG_SECTION);
 }
 
-export function getProvider(): ProviderId {
-  return config().get<ProviderId>('provider', 'auto');
+export function getProvider(): string {
+  const selected = config().get<string>('provider', 'auto');
+  return selected === 'auto' || getProviderInstances().some((instance) => instance.id === selected) ? selected : 'auto';
 }
 
-export function isProviderEnabled(id: ProviderId): boolean {
+export function isProviderEnabled(id: string): boolean {
   if (id === 'auto') return true;
-  const key = PROVIDER_ENABLED_KEYS[id];
-  return config().get<boolean>(key, DEFAULT_PROVIDER_ENABLED[id]);
+  return getProviderInstances().some((instance) => instance.id === id && instance.enabled);
 }
 
-export async function setProviderEnabled(id: ProviderId, enabled: boolean): Promise<void> {
+export async function setProviderEnabled(id: string, enabled: boolean): Promise<void> {
   if (id === 'auto') return;
-  await config().update(PROVIDER_ENABLED_KEYS[id], enabled, vscode.ConfigurationTarget.Global);
-  if (!enabled && getProvider() === id) {
-    await config().update('provider', 'auto', vscode.ConfigurationTarget.Global);
-  }
+  const instances = getProviderInstances();
+  const instance = instances.find((item) => item.id === id);
+  if (!instance) return;
+  instance.enabled = enabled;
+  await saveProviderInstances(instances);
 }
 
-export function getEnabledProviderIds(): ProviderId[] {
-  return ALL_PROVIDER_IDS.filter((id) => isProviderEnabled(id));
+export function getEnabledProviderIds(): string[] {
+  return getProviderInstances().filter((instance) => instance.enabled).map((instance) => instance.id);
 }
 
-export function getProviderOrder(): ProviderId[] {
-  const configured = config().get<ProviderId[]>('providerOrder', ALL_PROVIDER_IDS);
-  const result: ProviderId[] = [];
-  for (const id of [...configured, ...ALL_PROVIDER_IDS]) {
-    if (id === 'auto' || !ALL_PROVIDER_IDS.includes(id) || result.includes(id)) continue;
-    if (isProviderEnabled(id)) result.push(id);
-  }
-  return result;
+export function getProviderOrder(): string[] {
+  return getEnabledProviderIds();
 }
 
 export function getSourceLanguage(): string {
@@ -102,6 +116,11 @@ export function getProxy(): string | undefined {
 }
 
 export function getSetting<T>(key: string, fallback: T): T {
+  const instance = currentProviderInstance();
+  if (instance && INSTANCE_SETTING_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+    if (Object.prototype.hasOwnProperty.call(instance.settings, key)) return instance.settings[key] as T;
+    return fallback;
+  }
   return config().get<T>(key, fallback);
 }
 

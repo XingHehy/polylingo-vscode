@@ -2,6 +2,18 @@
 
 All notable changes to PolyLingo will be documented in this file.
 
+## 0.1.2
+
+- Reworked translation engines as named instances. The same provider can be added multiple times, with independent settings and securely stored credentials.
+- Kept Google Free, Bing Web, and MyMemory as built-in instances that can be disabled but not deleted; additional instances of all three can still be added.
+- Replaced the always-expanded engine settings with a compact list and bottom-sheet dialogs for adding or editing an engine.
+- Added drag handles to reorder engines. In Auto mode, enabled engines are tried from top to bottom; the list order is saved automatically.
+- Moved the AI translation prompt into each OpenAI Compatible and Ollama instance so prompts are no longer shared globally.
+- Added engine selection to the sidebar and displayed custom instance names as `name · provider` throughout the UI.
+- Added a settings button to the sidebar title and version, feedback email, and GitHub links to the settings panel.
+- Improved selection Hover states: manual translation can be started from the selection popup, and translation failures are shown there instead of leaving a stale loading message.
+- Configuration note: legacy per-provider settings and credentials are not migrated to engine instances; configure each instance again in the settings panel.
+
 ## 0.1.1
 
 - Added a dedicated PolyLingo icon for the Extensions view.

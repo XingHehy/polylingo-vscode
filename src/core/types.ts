@@ -12,6 +12,16 @@ export type ProviderId =
   | 'openai-compatible'
   | 'ollama';
 
+export type ProviderKind = Exclude<ProviderId, 'auto'>;
+
+export interface ProviderInstance {
+  id: string;
+  kind: ProviderKind;
+  name: string;
+  enabled: boolean;
+  settings: Record<string, unknown>;
+}
+
 export type TranslationContext = 'selection' | 'document' | 'terminal' | 'clipboard' | 'comment';
 
 export interface TranslateRequest {
@@ -24,13 +34,14 @@ export interface TranslateRequest {
 
 export interface TranslateResult {
   text: string;
-  provider: ProviderId;
+  provider: string;
   detectedLanguage?: string;
   raw?: unknown;
 }
 
 export interface TranslationProvider {
-  readonly id: ProviderId;
+  readonly id: string;
+  readonly kind?: ProviderKind;
   readonly displayName: string;
   readonly maxChars?: number;
   isConfigured(): Promise<boolean> | boolean;

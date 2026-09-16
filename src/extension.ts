@@ -3,8 +3,7 @@ import { CONFIG_SECTION, getProvider, getSourceLanguage, getTargetLanguage, getS
 import { getUiLanguage, t } from './core/i18n';
 import { TranslationManager } from './core/manager';
 import { Secrets } from './core/secrets';
-import { ProviderId, TranslateRequest } from './core/types';
-import { manageCredentials } from './features/credentials';
+import { TranslateRequest } from './core/types';
 import { translateDocumentText } from './features/documentTranslator';
 import { LoadingIndicator } from './features/loading';
 import { ResultPresentation, ResultPresenter } from './features/resultPresenter';
@@ -46,7 +45,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerProviders(manager, secrets);
   const presenter = new ResultPresenter(context.globalState);
   const loading = new LoadingIndicator();
-  presenter.setSidebarTranslateHandler(async (text, sourceLanguage, targetLanguage) => {
+  presenter.setSidebarProviders(manager.listProviders().map((provider) => ({ id: provider.id, name: provider.displayName })));
+  presenter.setSidebarTranslateHandler(async (text, sourceLanguage, targetLanguage, provider) => {
     const max = getSetting('maxSelectionChars', 12000);
     if (text.length > max) throw new Error(t('error.selectionTooLarge', { count: text.length, limit: max }));
     return loading.run(t('loading.selection'), () => manager.translate({
@@ -55,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       targetLanguage,
       context: 'selection',
       explain: false
-    }));
+    }, provider));
   });
   let aiAvailable = false;
   const refreshAiAvailability = async () => {
@@ -83,15 +83,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
   status.command = 'polyLingo.selectProvider';
   const refreshStatus = () => {
-    status.text = `$(globe) ${getProvider()} → ${getTargetLanguage()}`;
+    const selected = getProvider();
+    status.text = `$(globe) ${selected === 'auto' ? t('provider.auto') : manager.getProvider(selected)?.displayName || selected} → ${getTargetLanguage()}`;
     status.tooltip = t('status.selectProviderTooltip');
     status.show();
   };
   refreshStatus();
+  const refreshProviderState = async () => {
+    registerProviders(manager, secrets);
+    presenter.setSidebarProviders(manager.listProviders().map((provider) => ({ id: provider.id, name: provider.displayName })));
+    refreshStatus();
+    await refreshAiAvailability();
+  };
   context.subscriptions.push(status, vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration(CONFIG_SECTION)) {
-      refreshStatus();
-      void refreshAiAvailability();
+      void refreshProviderState();
     }
   }));
 
@@ -101,6 +107,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const { editor, selection, text } = selectionText();
       const presentation = editorPresentation();
       if (presentation === 'hover') hoverRequestId = await presenter.showEditorLoading(editor, selection, text);
+      else await presenter.clearEditorReady();
       const result = await loading.run(t('loading.selection'), () => manager.translate(requestFor(text, 'selection')));
       if (replace) {
         await editor.edit((edit) => edit.replace(selection, result.text));
@@ -111,8 +118,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await presenter.present(result, text, presentation as Exclude<ResultPresentation, 'hover'>, aiAvailable ? 'polyLingo.explainSelection' : undefined);
       }
     } catch (error) {
-      if (hoverRequestId !== undefined) await presenter.clearEditorLoading(hoverRequestId);
-      vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
+      if (hoverRequestId === undefined || !(await presenter.showEditorError(hoverRequestId, error))) {
+        vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
+      }
     }
   }
 
@@ -151,8 +159,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           await presenter.present(result, text, presentation as Exclude<ResultPresentation, 'hover'>);
         }
       } catch (error) {
-        if (hoverRequestId !== undefined) await presenter.clearEditorLoading(hoverRequestId);
-        vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
+        if (hoverRequestId === undefined || !(await presenter.showEditorError(hoverRequestId, error))) {
+          vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
+        }
       }
     }),
     vscode.commands.registerCommand('polyLingo.explainTerminalSelection', async () => {
@@ -193,7 +202,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('polyLingo.replaceLastResult', () => presenter.replaceLastResult()),
     vscode.commands.registerCommand('polyLingo.showLastResultOutput', () => presenter.showLastResultOutput()),
     vscode.commands.registerCommand('polyLingo.selectProvider', async () => {
-      const items: Array<vscode.QuickPickItem & { id: ProviderId }> = [
+      const items: Array<vscode.QuickPickItem & { id: string }> = [
         { label: t('provider.auto'), description: t('provider.autoDescription'), id: 'auto' },
         ...manager.listProviders().filter((provider) => isProviderEnabled(provider.id)).map((provider) => ({ label: provider.displayName, description: provider.id, id: provider.id }))
       ];
@@ -227,30 +236,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         refreshStatus();
       }
     }),
-    vscode.commands.registerCommand('polyLingo.manageCredentials', async () => {
-      await manageCredentials(secrets);
-      await refreshAiAvailability();
-    }),
-    vscode.commands.registerCommand('polyLingo.openSettings', () => SettingsPanel.show(context.extensionUri, secrets, manager, refreshAiAvailability))
+    vscode.commands.registerCommand('polyLingo.manageCredentials', () => SettingsPanel.show(context.extensionUri, String(context.extension.packageJSON.version), secrets, manager, refreshProviderState)),
+    vscode.commands.registerCommand('polyLingo.openSettings', () => SettingsPanel.show(context.extensionUri, String(context.extension.packageJSON.version), secrets, manager, refreshProviderState))
   );
 
   let timer: NodeJS.Timeout | undefined;
-  let lastAutoText = '';
   let autoRequestId = 0;
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection((event) => {
-    if (!getSetting('selection.autoTranslate', false)) return;
     if (event.textEditor !== vscode.window.activeTextEditor) return;
     if (timer) clearTimeout(timer);
     const requestId = ++autoRequestId;
+    void presenter.clearEditorReady();
     const selection = event.selections[0];
     if (!selection || selection.isEmpty) return;
     const original = event.textEditor.document.getText(selection);
     const text = original.trim();
-    if (!text || text === lastAutoText || text.length > getSetting('maxSelectionChars', 12000)) return;
+    if (!text || text.length > getSetting('maxSelectionChars', 12000)) return;
+    presenter.setSidebarInput(original);
     timer = setTimeout(async () => {
+      if (requestId !== autoRequestId) return;
+      if (event.textEditor !== vscode.window.activeTextEditor || !event.textEditor.selection.isEqual(selection) || event.textEditor.document.getText(selection) !== original) return;
+      if (!getSetting('selection.autoTranslate', false)) {
+        try {
+          await presenter.showEditorReady(event.textEditor, selection, original);
+        } catch {
+          // The selection stays available through the command and context menu
+          // if VS Code cannot open the hover programmatically.
+        }
+        return;
+      }
       let hoverRequestId: number | undefined;
       try {
-        lastAutoText = text;
         const presentation = editorPresentation();
         if (presentation === 'hover') hoverRequestId = await presenter.showEditorLoading(event.textEditor, selection, original);
         const result = await loading.run(t('loading.autoSelection'), () => manager.translate(requestFor(text, 'selection')));
@@ -263,9 +279,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         } else {
           await presenter.present(result, original, presentation as Exclude<ResultPresentation, 'hover'>, aiAvailable ? 'polyLingo.explainSelection' : undefined);
         }
-      } catch {
-        if (hoverRequestId !== undefined) await presenter.clearEditorLoading(hoverRequestId);
-        // Automatic translation is intentionally quiet; manual commands display actionable errors.
+      } catch (error) {
+        if (requestId !== autoRequestId) {
+          if (hoverRequestId !== undefined) await presenter.clearEditorLoading(hoverRequestId);
+          return;
+        }
+        if (hoverRequestId !== undefined) await presenter.showEditorError(hoverRequestId, error);
+        // Automatic translation outside Hover remains quiet.
       }
     }, getSetting('selection.debounceMs', 650));
   }));

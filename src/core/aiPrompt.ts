@@ -1,4 +1,4 @@
-import { getSetting } from './config';
+import { currentProviderInstance } from './providerScope';
 import { TranslateRequest } from './types';
 
 export const DEFAULT_AI_PROMPT = [
@@ -20,7 +20,8 @@ function fill(template: string, name: string, value: string): string {
 }
 
 export function buildAiSystemPrompt(request: TranslateRequest): string {
-  const template = getSetting<string>('ai.prompt', DEFAULT_AI_PROMPT).trim() || DEFAULT_AI_PROMPT;
+  const configured = currentProviderInstance()?.settings['ai.prompt'];
+  const template = typeof configured === 'string' && configured.trim() ? configured.trim() : DEFAULT_AI_PROMPT;
   const task = request.explain
     ? 'Translate the user content and briefly explain its technical meaning.'
     : 'Translate the user content accurately.';

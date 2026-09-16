@@ -21,6 +21,7 @@ type MessageKey =
   | 'sidebar.inputPlaceholder'
   | 'sidebar.sourceLanguage'
   | 'sidebar.targetLanguage'
+  | 'sidebar.provider'
   | 'sidebar.translate'
   | 'sidebar.translating'
   | 'sidebar.history'
@@ -89,6 +90,7 @@ const en: Messages = {
   'sidebar.inputPlaceholder': 'Enter text to translate…',
   'sidebar.sourceLanguage': 'From',
   'sidebar.targetLanguage': 'To',
+  'sidebar.provider': 'Translation engine',
   'sidebar.translate': 'Translate',
   'sidebar.translating': 'Translating…',
   'sidebar.history': 'History',
@@ -156,6 +158,7 @@ const zhCN: Messages = {
   'sidebar.inputPlaceholder': '输入需要翻译的文字…',
   'sidebar.sourceLanguage': '源语言',
   'sidebar.targetLanguage': '目标语言',
+  'sidebar.provider': '翻译引擎',
   'sidebar.translate': '翻译',
   'sidebar.translating': '正在翻译…',
   'sidebar.history': '历史记录',
@@ -223,6 +226,7 @@ const zhTW: Messages = {
   'sidebar.inputPlaceholder': '輸入需要翻譯的文字…',
   'sidebar.sourceLanguage': '來源語言',
   'sidebar.targetLanguage': '目標語言',
+  'sidebar.provider': '翻譯引擎',
   'sidebar.translate': '翻譯',
   'sidebar.translating': '正在翻譯…',
   'sidebar.history': '歷史記錄',
@@ -276,6 +280,7 @@ const ja: Messages = {
   'sidebar.inputPlaceholder': '翻訳するテキストを入力…',
   'sidebar.sourceLanguage': '翻訳元',
   'sidebar.targetLanguage': '翻訳先',
+  'sidebar.provider': '翻訳エンジン',
   'sidebar.translate': '翻訳',
   'sidebar.translating': '翻訳中…',
   'sidebar.history': '履歴',
@@ -318,6 +323,7 @@ const ko: Messages = {
   'sidebar.inputPlaceholder': '번역할 텍스트 입력…',
   'sidebar.sourceLanguage': '원본 언어',
   'sidebar.targetLanguage': '대상 언어',
+  'sidebar.provider': '번역 엔진',
   'sidebar.translate': '번역',
   'sidebar.translating': '번역 중…',
   'sidebar.history': '기록',

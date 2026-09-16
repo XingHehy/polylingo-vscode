@@ -3,7 +3,7 @@
   "displayName": "PolyLingo",
   "icon": "resources/polylingo.png",
   "description": "%extension.description%",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "xinghehy",
   "license": "MIT",
   "repository": {
@@ -158,6 +158,13 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "polyLingo.openSettings",
+          "when": "view == polyLingo.translationView",
+          "group": "navigation@1"
+        }
+      ],
       "extension/context": [
         {
           "command": "polyLingo.openSettings",
@@ -330,55 +337,27 @@
         "polyLingo.provider": {
           "type": "string",
           "default": "auto",
-          "enum": [
-            "auto",
-            "google-free",
-            "bing-web",
-            "mymemory",
-            "libretranslate",
-            "deepl",
-            "azure",
-            "google-cloud",
-            "baidu",
-            "tencent",
-            "openai-compatible",
-            "ollama"
-          ],
-          "enumDescriptions": [
-            "%config.provider.auto%",
-            "%config.provider.googleFree%",
-            "%config.provider.bingWeb%",
-            "%config.provider.mymemory%",
-            "%config.provider.libreTranslate%",
-            "%config.provider.deepl%",
-            "%config.provider.azure%",
-            "%config.provider.googleCloud%",
-            "%config.provider.baidu%",
-            "%config.provider.tencent%",
-            "%config.provider.openAICompatible%",
-            "%config.provider.ollama%"
-          ],
           "description": "%config.provider.description%"
         },
-        "polyLingo.providerOrder": {
+        "polyLingo.providerInstances": {
           "type": "array",
-          "items": {
-            "type": "string"
-          },
           "default": [
-            "google-free",
-            "bing-web",
-            "mymemory",
-            "libretranslate",
-            "deepl",
-            "azure",
-            "google-cloud",
-            "baidu",
-            "tencent",
-            "openai-compatible",
-            "ollama"
+            { "id": "google-free", "kind": "google-free", "name": "Google Free", "enabled": true, "settings": {} },
+            { "id": "bing-web", "kind": "bing-web", "name": "Bing Web", "enabled": true, "settings": {} },
+            { "id": "mymemory", "kind": "mymemory", "name": "MyMemory", "enabled": true, "settings": {} }
           ],
-          "description": "%config.providerOrder.description%"
+          "items": {
+            "type": "object",
+            "required": ["id", "kind", "name", "enabled", "settings"],
+            "properties": {
+              "id": { "type": "string" },
+              "kind": { "type": "string" },
+              "name": { "type": "string" },
+              "enabled": { "type": "boolean" },
+              "settings": { "type": "object" }
+            }
+          },
+          "description": "Configured translation engine instances. Manage them in PolyLingo Settings."
         },
         "polyLingo.sourceLanguage": {
           "type": "string",
@@ -477,153 +456,6 @@
             "%config.result.presentation.editor%"
           ],
           "description": "%config.result.terminalPresentation.description%"
-        },
-        "polyLingo.googleFree.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.googleFree.endpoint": {
-          "type": "string",
-          "default": "https://translate.googleapis.com/translate_a/single",
-          "description": "%config.googleFree.endpoint.description%"
-        },
-        "polyLingo.bingWeb.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.bingWeb.endpoint": {
-          "type": "string",
-          "default": "https://www.bing.com/translator",
-          "description": "%config.bingWeb.endpoint.description%"
-        },
-        "polyLingo.mymemory.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.mymemory.email": {
-          "type": "string",
-          "default": "",
-          "description": "%config.mymemory.email.description%"
-        },
-        "polyLingo.libreTranslate.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.libreTranslate.baseUrl": {
-          "type": "string",
-          "default": "http://127.0.0.1:5000",
-          "description": "%config.libreTranslate.baseUrl.description%"
-        },
-        "polyLingo.deepl.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.deepl.baseUrl": {
-          "type": "string",
-          "default": "https://api-free.deepl.com/v2",
-          "description": "%config.deepl.baseUrl.description%"
-        },
-        "polyLingo.azure.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.azure.endpoint": {
-          "type": "string",
-          "default": "https://api.cognitive.microsofttranslator.com",
-          "description": "%config.azure.endpoint.description%"
-        },
-        "polyLingo.azure.region": {
-          "type": "string",
-          "default": "",
-          "description": "%config.azure.region.description%"
-        },
-        "polyLingo.googleCloud.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.googleCloud.endpoint": {
-          "type": "string",
-          "default": "https://translation.googleapis.com/language/translate/v2",
-          "description": "%config.googleCloud.endpoint.description%"
-        },
-        "polyLingo.baidu.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.baidu.endpoint": {
-          "type": "string",
-          "default": "https://fanyi-api.baidu.com/api/trans/vip/translate",
-          "description": "%config.baidu.endpoint.description%"
-        },
-        "polyLingo.tencent.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.tencent.endpoint": {
-          "type": "string",
-          "default": "https://tmt.tencentcloudapi.com",
-          "description": "%config.tencent.endpoint.description%"
-        },
-        "polyLingo.tencent.region": {
-          "type": "string",
-          "default": "ap-guangzhou",
-          "description": "%config.tencent.region.description%"
-        },
-        "polyLingo.ai.prompt": {
-          "type": "string",
-          "default": "You are PolyLingo, a developer-focused translation assistant.\nTask: {task}\nTarget language: {targetLanguage}\nSource language: {sourceLanguage}\nContext: {context}\n\nRules:\n- Preserve code, commands, flags, paths, URLs, identifiers, API names, stack-trace tokens and Markdown when practical.\n- Do not invent missing context.\n- For translation-only tasks, return only the translation with no headings or commentary.\n- For translate-and-explain tasks, translate first and then give a concise technical explanation in the target language.",
-          "description": "%config.ai.prompt.description%"
-        },
-        "polyLingo.openAI.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.openAI.baseUrl": {
-          "type": "string",
-          "default": "https://api.openai.com/v1",
-          "description": "%config.openAI.baseUrl.description%"
-        },
-        "polyLingo.openAI.model": {
-          "type": "string",
-          "default": "gpt-4.1-mini",
-          "description": "%config.openAI.model.description%"
-        },
-        "polyLingo.openAI.temperature": {
-          "type": "number",
-          "default": 0.2,
-          "minimum": 0,
-          "maximum": 2,
-          "description": "%config.openAI.temperature.description%"
-        },
-        "polyLingo.openAI.extraHeaders": {
-          "type": "object",
-          "default": {},
-          "description": "%config.openAI.extraHeaders.description%"
-        },
-        "polyLingo.ollama.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.providerEnabled.description%"
-        },
-        "polyLingo.ollama.baseUrl": {
-          "type": "string",
-          "default": "http://127.0.0.1:11434/v1",
-          "description": "%config.ollama.baseUrl.description%"
-        },
-        "polyLingo.ollama.model": {
-          "type": "string",
-          "default": "qwen2.5:7b",
-          "description": "%config.ollama.model.description%"
         }
       }
     },

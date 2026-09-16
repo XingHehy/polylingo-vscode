@@ -8,14 +8,14 @@
 
 ## 主要功能
 
-- **編輯器選取翻譯**：在選取範圍附近顯示譯文，可複製結果或取代原文。
-- **自動選取翻譯**：選取範圍停止變更後自動開始翻譯，延遲時間可自行設定。
+- **編輯器選取翻譯**：選取文字後自動顯示浮窗，點擊「翻譯」才送出請求；譯文可複製或取代原文。
+- **自動選取翻譯**：可選擇開啟，在選取範圍停止變更後直接於浮窗翻譯。
 - **終端機翻譯**：翻譯命令輸出、錯誤和記錄。
 - **文件翻譯**：支援 Markdown、純文字和原始碼註解；智慧模式會保護程式碼區塊。
 - **AI 翻譯與解釋**：透過 OpenAI Compatible 或 Ollama 理解技術內容。
 - **多引擎與自動備援**：目前引擎失敗後，`auto` 模式會嘗試下一個可用引擎。
 - **可選擇結果位置**：依使用情境選擇浮動視窗、側邊欄、右下角通知或編輯器分欄。
-- **翻譯工作區**：直接在側邊欄輸入文字翻譯，並查看本機歷史記錄。
+- **翻譯工作區**：選取原文會填入側邊欄輸入框，可選擇引擎翻譯並查看本機歷史記錄。
 - **安全儲存憑證**：API Key 儲存在 VS Code `SecretStorage`，不會寫入 `settings.json`。
 - **多語言介面**：支援簡體中文、繁體中文、English、日本語和한국어。
 
@@ -39,7 +39,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 1. 在命令選擇區執行 `PolyLingo: Open Custom Settings`。
 2. 選擇目標語言和翻譯引擎。預設的 `Auto` 會依序嘗試已啟用的引擎。
-3. 在編輯器中選取文字，按快速鍵或使用右鍵選單進行翻譯。
+3. 在編輯器中選取文字，於浮窗點擊「翻譯」，也可使用快速鍵或右鍵選單。
 
 預設快速鍵：
 
@@ -48,7 +48,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 | macOS | `Cmd + Alt + T` |
 | Windows / Linux | `Ctrl + Alt + T` |
 
-若要在選取文字後自動翻譯，請在設定頁啟用 **選取後自動翻譯**。
+若要選取後不經點擊就開始翻譯，請在設定頁啟用 **選取浮窗自動翻譯**。
 
 ## 翻譯結果
 
@@ -99,7 +99,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 | OpenAI Compatible | 通常必要 | 相容 `/chat/completions` 的 AI 服務 |
 | Ollama | 無 | 在本機執行的模型 |
 
-預設啟用 Google Free、Bing Web 和 MyMemory。其他引擎需要在 PolyLingo 設定頁中手動啟用。
+預設內建並啟用 Google Free、Bing Web 和 MyMemory。這三個內建項目可停用，但不能刪除。所有類型都能重複新增，例如多個 LibreTranslate 服務、OpenAI Compatible 端點，或額外的 Google Free、Bing Web、MyMemory。每個實例可個別命名，顯示為「名稱 · 提供商」，設定與憑證彼此獨立。
 
 > Google Free 與 Bing Web 並非官方公開 API，適合輕量使用，但無法保證穩定性。需要穩定服務時，請設定官方 API、自行託管的 LibreTranslate 或本機 Ollama。
 
@@ -108,11 +108,13 @@ code --install-extension poly-lingo-0.1.2.vsix
 執行 `PolyLingo: Open Custom Settings` 可以：
 
 - 啟用或停用翻譯引擎
+- 拖曳引擎列表左側的三橫線調整優先順序
+- 新增、命名、刪除自訂引擎實例；三個內建實例只能停用
 - 設定來源語言、目標語言和預設引擎
 - 測試每個引擎是否可用
 - 儲存 API Key、Region、模型名稱等參數
-- 設定 Proxy、請求逾時和自動選取翻譯延遲
-- 編輯 AI 翻譯 Prompt
+- 設定 Proxy、請求逾時和選取浮窗延遲
+- 在各個 OpenAI Compatible 或 Ollama 引擎實例中分別編輯 AI 翻譯 Prompt
 
 常用的原生 VS Code 設定範例：
 
@@ -133,7 +135,7 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 ### Auto 模式
 
-當 `polyLingo.provider` 設為 `auto` 時，PolyLingo 會依照 `polyLingo.providerOrder` 依序嘗試已啟用且設定完整的引擎。若單獨選定某個引擎，請求失敗後不會切換到其他引擎。
+當 `polyLingo.provider` 設為 `auto` 時，PolyLingo 會由上而下依序嘗試引擎列表中已啟用且設定完整的實例。拖曳每列左側的三橫線即可調整優先順序，排列會自動儲存。若單獨選定某個實例，請求失敗後不會切換到其他實例。請透過自訂設定頁管理實例；不讀取舊版按提供商分開儲存的設定或憑證。
 
 ### Proxy
 
@@ -184,7 +186,7 @@ ollama pull qwen2.5:7b
 }
 ```
 
-內建 Prompt 會盡量保留程式碼、命令、路徑、URL、識別碼、API 名稱、堆疊和 Markdown。可以在 PolyLingo 設定頁中修改或還原預設值。
+內建 Prompt 會盡量保留程式碼、命令、路徑、URL、識別碼、API 名稱、堆疊和 Markdown。每個 OpenAI Compatible 或 Ollama 實例都有自己的 Prompt；可在該實例的「編輯」面板中修改或還原預設值。
 
 ## 常用命令
 
