@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { getProxy, getTimeout } from './config';
 import { currentProviderInstance } from './providerScope';
-import { logLine, showOutput } from './log';
+import { logLine } from './log';
 import { rawHttpRequest } from './rawHttp';
 import { HttpRequestOptions, HttpResponse } from './types';
 
@@ -81,7 +81,6 @@ export async function request<T = unknown>(urlString: string, options: HttpReque
     if (response.status < 200 || response.status >= 300) {
       const error = new Error(compactResponseError(response.status, url.hostname, body, json));
       logLine(`[HTTP #${requestId}] Failed · status=${response.status} · ${Date.now() - startedAt}ms · remote=${response.remoteAddress || 'unknown'}${serverRequestId ? ` · request-id=${serverRequestId}` : ''} · ${error.message}`);
-      showOutput();
       throw error;
     }
     logLine(`[HTTP #${requestId}] Completed · status=${response.status} · ${Date.now() - startedAt}ms · remote=${response.remoteAddress || 'unknown'}${serverRequestId ? ` · request-id=${serverRequestId}` : ''} · ${response.body.length} bytes`);
@@ -90,7 +89,6 @@ export async function request<T = unknown>(urlString: string, options: HttpReque
     if (!(error instanceof Error) || !/^HTTP \d{3}\b/.test(error.message)) {
       const message = error instanceof Error ? error.message : String(error);
       logLine(`[HTTP #${requestId}] Failed · ${Date.now() - startedAt}ms · ${message}`);
-      showOutput();
     }
     throw error;
   }

@@ -10,7 +10,3 @@ export function getOutputChannel(): vscode.OutputChannel {
 export function logLine(message: string): void {
   getOutputChannel().appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
 }
-
-export function showOutput(): void {
-  getOutputChannel().show(true);
-}

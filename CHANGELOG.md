@@ -2,6 +2,9 @@
 
 All notable changes to PolyLingo will be documented in this file.
 
+## 0.1.4
+- Kept HTTP failures in the log without automatically opening the Output panel during provider fallback.
+
 ## 0.1.3
 
 - Removed Google Free and Bing Web from Add engine because they already exist as built-in instances.
