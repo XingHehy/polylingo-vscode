@@ -43,7 +43,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const secrets = new Secrets(context.secrets);
   const manager = new TranslationManager();
   registerProviders(manager, secrets);
-  const presenter = new ResultPresenter(context.globalState);
+  const presenter = new ResultPresenter(context.globalState, String(context.extension.packageJSON.version));
   const loading = new LoadingIndicator();
   presenter.setSidebarProviders(manager.listProviders().map((provider) => ({ id: provider.id, name: provider.displayName })));
   presenter.setSidebarTranslateHandler(async (text, sourceLanguage, targetLanguage, provider) => {
@@ -57,6 +57,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       explain: false
     }, provider));
   });
+  presenter.setSidebarExplainHandler((text, sourceLanguage, targetLanguage) => (
+    loading.run(t('loading.aiSelection'), () => manager.translateWithAI({
+      text,
+      sourceLanguage,
+      targetLanguage,
+      context: 'selection',
+      explain: true
+    }))
+  ));
   let aiAvailable = false;
   const refreshAiAvailability = async () => {
     aiAvailable = await manager.hasAvailableAIProvider();
@@ -252,7 +261,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const original = event.textEditor.document.getText(selection);
     const text = original.trim();
     if (!text || text.length > getSetting('maxSelectionChars', 12000)) return;
-    presenter.setSidebarInput(original);
     timer = setTimeout(async () => {
       if (requestId !== autoRequestId) return;
       if (event.textEditor !== vscode.window.activeTextEditor || !event.textEditor.selection.isEqual(selection) || event.textEditor.document.getText(selection) !== original) return;

@@ -2,6 +2,20 @@
 
 All notable changes to PolyLingo will be documented in this file.
 
+## 0.1.3
+
+- Removed Google Free and Bing Web from Add engine because they already exist as built-in instances.
+- Made sidebar AI translation and explanation reuse the result's original text instead of requiring a new terminal selection.
+- Added explicit Save actions to engine editors, masked saved API keys, OpenAI-compatible model discovery, and collapsed advanced fields for Temperature and extra headers.
+- Added a dedicated model-loading error message for OpenAI-compatible model discovery.
+- Added global and per-engine proxy controls under Advanced settings; engine-level inherit, enable, or disable choices override the global default.
+- Made enabled proxy policies fail with a clear configuration error when neither an engine nor default proxy URL is available, instead of silently using a direct connection.
+- Added operating system proxy discovery for macOS, Windows, and Linux GNOME when an enabled engine or global proxy policy has no explicit URL.
+- Added privacy-safe HTTP request logs to the PolyLingo Output panel, including the endpoint, effective proxy, status, duration, and failures.
+- Replaced Node's `http`/`https` request path with PolyLingo's own TCP/TLS HTTP transport, preserving hostnames, Host headers, SNI, certificate validation, and explicit HTTP/HTTPS proxy behavior without using the extension host's global agents.
+- Stopped editor and Output-panel text selections from automatically replacing the sidebar input.
+- Added confirmation before deleting custom engines and improved settings footer layout.
+
 ## 0.1.2
 
 - Reworked translation engines as named instances. The same provider can be added multiple times, with independent settings and securely stored credentials.

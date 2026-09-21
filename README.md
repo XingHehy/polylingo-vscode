@@ -129,6 +129,7 @@ code --install-extension poly-lingo-0.1.2.vsix
   "polyLingo.result.terminalPresentation": "sidebar",
   "polyLingo.document.mode": "smart",
   "polyLingo.requestTimeoutMs": 15000,
+  "polyLingo.proxy.enabled": false,
   "polyLingo.proxy": ""
 }
 ```
@@ -139,11 +140,14 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 ### 代理
 
-代理按以下顺序读取：
+全局“高级”中可以设置默认代理开关和默认代理地址。每个翻译引擎的“高级”还可以选择“继承默认设置”“为此引擎启用”或“为此引擎禁用”，单独配置始终优先于全局设置。
+
+启用代理且代理地址留空时，按以下顺序查找地址：
 
 1. `polyLingo.proxy`
 2. VS Code 的 `http.proxy`
 3. `HTTPS_PROXY` / `HTTP_PROXY` 环境变量
+4. 操作系统代理（macOS、Windows 或 Linux GNOME）
 
 ### API Key
 
@@ -241,6 +245,12 @@ npm run compile
 
 ```bash
 npm run package
+```
+
+默认生成带本地时间戳的测试版本，例如 `poly-lingo-0.1.3-test-20260920105412.vsix`。如需在本地生成与 `package.json` 一致的正式版本：
+
+```bash
+npm run package:release
 ```
 
 ## 参与贡献

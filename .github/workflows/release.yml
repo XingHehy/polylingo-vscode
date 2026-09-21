@@ -93,7 +93,7 @@ jobs:
         env:
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          npm run package
+          npm run package:release
           test -f "release/poly-lingo-${VERSION}.vsix"
 
       - name: Build release notes

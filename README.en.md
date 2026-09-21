@@ -129,6 +129,7 @@ Common native VS Code settings:
   "polyLingo.result.terminalPresentation": "sidebar",
   "polyLingo.document.mode": "smart",
   "polyLingo.requestTimeoutMs": 15000,
+  "polyLingo.proxy.enabled": false,
   "polyLingo.proxy": ""
 }
 ```
@@ -139,11 +140,14 @@ When `polyLingo.provider` is `auto`, PolyLingo tries enabled and fully configure
 
 ### Proxy
 
-Proxy settings are resolved in this order:
+The global Advanced section contains the default proxy switch and URL. Each engine's Advanced section can inherit the default, enable its own proxy, or explicitly disable proxying. An engine-level choice always overrides the global setting.
+
+When proxying is enabled and its URL is empty, the URL is resolved in this order:
 
 1. `polyLingo.proxy`
 2. VS Code `http.proxy`
 3. The `HTTPS_PROXY` or `HTTP_PROXY` environment variable
+4. The operating system proxy (macOS, Windows, or Linux GNOME)
 
 ### API Keys
 
@@ -241,6 +245,12 @@ To package a VSIX:
 
 ```bash
 npm run package
+```
+
+By default this creates a local test build with a timestamp, such as `poly-lingo-0.1.3-test-20260920105412.vsix`. To create the formal `package.json` version locally:
+
+```bash
+npm run package:release
 ```
 
 ## Contributing

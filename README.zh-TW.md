@@ -129,6 +129,7 @@ code --install-extension poly-lingo-0.1.2.vsix
   "polyLingo.result.terminalPresentation": "sidebar",
   "polyLingo.document.mode": "smart",
   "polyLingo.requestTimeoutMs": 15000,
+  "polyLingo.proxy.enabled": false,
   "polyLingo.proxy": ""
 }
 ```
@@ -139,11 +140,14 @@ code --install-extension poly-lingo-0.1.2.vsix
 
 ### Proxy
 
-Proxy 會依照以下順序讀取：
+全域「進階」中可以設定預設 Proxy 開關與位址。每個翻譯引擎的「進階」也可以選擇「繼承預設設定」「為此引擎啟用」或「為此引擎停用」；引擎層級的選擇永遠優先於全域設定。
+
+啟用 Proxy 且位址留空時，會依照以下順序尋找位址：
 
 1. `polyLingo.proxy`
 2. VS Code 的 `http.proxy`
 3. `HTTPS_PROXY` / `HTTP_PROXY` 環境變數
+4. 作業系統 Proxy（macOS、Windows 或 Linux GNOME）
 
 ### API Key
 
@@ -241,6 +245,12 @@ npm run compile
 
 ```bash
 npm run package
+```
+
+預設會產生帶有本機時間戳的測試版本，例如 `poly-lingo-0.1.3-test-20260920105412.vsix`。若要在本機產生與 `package.json` 相同的正式版本：
+
+```bash
+npm run package:release
 ```
 
 ## 參與貢獻

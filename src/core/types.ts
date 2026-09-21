@@ -54,6 +54,7 @@ export interface HttpRequestOptions {
   body?: string | Buffer;
   timeoutMs?: number;
   proxy?: string;
+  logLabel?: string;
 }
 
 export interface HttpResponse<T = unknown> {

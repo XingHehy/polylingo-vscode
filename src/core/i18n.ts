@@ -17,6 +17,7 @@ type MessageKey =
   | 'error.selectTextFirst'
   | 'error.selectionTooLarge'
   | 'error.clipboardEmpty'
+  | 'error.proxyNotDetected'
   | 'sidebar.input'
   | 'sidebar.inputPlaceholder'
   | 'sidebar.sourceLanguage'
@@ -86,6 +87,7 @@ const en: Messages = {
   'error.selectTextFirst': 'Select some text first.',
   'error.selectionTooLarge': 'Selection is too large ({count} characters). Current limit: {limit}.',
   'error.clipboardEmpty': 'Clipboard is empty.',
+  'error.proxyNotDetected': 'No available proxy was detected. Enter a proxy URL.',
   'sidebar.input': 'Translate text',
   'sidebar.inputPlaceholder': 'Enter text to translate…',
   'sidebar.sourceLanguage': 'From',
@@ -154,6 +156,7 @@ const zhCN: Messages = {
   'error.selectTextFirst': '请先选中需要翻译的文字。',
   'error.selectionTooLarge': '选中内容过长（{count} 个字符），当前限制为 {limit} 个字符。',
   'error.clipboardEmpty': '剪贴板为空。',
+  'error.proxyNotDetected': '未识别到可用代理，请填写代理地址',
   'sidebar.input': '输入翻译',
   'sidebar.inputPlaceholder': '输入需要翻译的文字…',
   'sidebar.sourceLanguage': '源语言',
@@ -222,6 +225,7 @@ const zhTW: Messages = {
   'error.selectTextFirst': '請先選取需要翻譯的文字。',
   'error.selectionTooLarge': '選取內容過長（{count} 個字元），目前限制為 {limit} 個字元。',
   'error.clipboardEmpty': '剪貼簿是空的。',
+  'error.proxyNotDetected': '未偵測到可用的 Proxy，請填寫 Proxy 位址',
   'sidebar.input': '輸入翻譯',
   'sidebar.inputPlaceholder': '輸入需要翻譯的文字…',
   'sidebar.sourceLanguage': '來源語言',
@@ -276,6 +280,7 @@ const ja: Messages = {
   'error.noActiveEditor': 'アクティブなテキストエディターがありません。',
   'error.selectTextFirst': '先に翻訳するテキストを選択してください。',
   'error.clipboardEmpty': 'クリップボードが空です。',
+  'error.proxyNotDetected': '利用可能なプロキシを検出できませんでした。プロキシ URL を入力してください。',
   'sidebar.input': 'テキストを翻訳',
   'sidebar.inputPlaceholder': '翻訳するテキストを入力…',
   'sidebar.sourceLanguage': '翻訳元',
@@ -319,6 +324,7 @@ const ko: Messages = {
   'error.noActiveEditor': '활성 텍스트 편집기가 없습니다.',
   'error.selectTextFirst': '먼저 번역할 텍스트를 선택하세요.',
   'error.clipboardEmpty': '클립보드가 비어 있습니다.',
+  'error.proxyNotDetected': '사용 가능한 프록시를 감지하지 못했습니다. 프록시 URL을 입력하세요.',
   'sidebar.input': '텍스트 번역',
   'sidebar.inputPlaceholder': '번역할 텍스트 입력…',
   'sidebar.sourceLanguage': '원본 언어',

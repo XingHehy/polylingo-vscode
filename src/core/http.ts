@@ -1,9 +1,26 @@
-import * as http from 'http';
-import * as https from 'https';
 import { URL } from 'url';
-import HttpsProxyAgent = require('https-proxy-agent');
 import { getProxy, getTimeout } from './config';
+import { currentProviderInstance } from './providerScope';
+import { logLine, showOutput } from './log';
+import { rawHttpRequest } from './rawHttp';
 import { HttpRequestOptions, HttpResponse } from './types';
+
+let requestSequence = 0;
+
+function safeUrl(url: URL): string {
+  const keys = [...url.searchParams.keys()];
+  return `${url.origin}${url.pathname}${keys.length ? `?${keys.map((key) => `${encodeURIComponent(key)}=…`).join('&')}` : ''}`;
+}
+
+function safeProxy(proxy: string | undefined): string {
+  if (!proxy) return 'direct';
+  try {
+    const parsed = new URL(proxy);
+    return `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}`;
+  } catch {
+    return 'configured (address hidden)';
+  }
+}
 
 function compactResponseError(status: number, hostname: string, body: string, json: unknown): string {
   if (status === 429) {
@@ -41,43 +58,42 @@ function compactResponseError(status: number, hostname: string, body: string, js
 
 export async function request<T = unknown>(urlString: string, options: HttpRequestOptions = {}): Promise<HttpResponse<T>> {
   const url = new URL(urlString);
-  const transport = url.protocol === 'https:' ? https : http;
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error(`Unsupported URL protocol: ${url.protocol}`);
   const proxy = options.proxy === undefined ? getProxy() : options.proxy;
   const timeoutMs = options.timeoutMs ?? getTimeout();
+  const requestId = ++requestSequence;
+  const startedAt = Date.now();
+  const provider = currentProviderInstance();
+  const label = options.logLabel || (provider ? `${provider.name} (${provider.id})` : 'HTTP');
+  const method = options.method || 'GET';
   const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined && headers['Content-Length'] === undefined && headers['content-length'] === undefined) {
     headers['Content-Length'] = Buffer.byteLength(options.body).toString();
   }
+  logLine(`[HTTP #${requestId}] ${label} · ${method} ${safeUrl(url)} · proxy=${safeProxy(proxy)} · transport=raw-socket · timeout=${timeoutMs}ms`);
 
-  return new Promise<HttpResponse<T>>((resolve, reject) => {
-    const req = transport.request({
-      protocol: url.protocol,
-      hostname: url.hostname,
-      port: url.port ? Number(url.port) : undefined,
-      path: `${url.pathname}${url.search}`,
-      method: options.method || 'GET',
-      headers,
-      agent: proxy ? HttpsProxyAgent(proxy) : undefined
-    }, (res) => {
-      const chunks: Buffer[] = [];
-      res.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-      res.on('end', () => {
-        const body = Buffer.concat(chunks).toString('utf8');
-        const status = res.statusCode || 0;
-        let json: T | undefined;
-        try { json = body ? JSON.parse(body) as T : undefined; } catch { json = undefined; }
-        if (status < 200 || status >= 300) {
-          reject(new Error(compactResponseError(status, url.hostname, body, json)));
-          return;
-        }
-        resolve({ status, headers: res.headers as Record<string, string | string[] | undefined>, body, json });
-      });
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error(`Request timed out after ${timeoutMs} ms`)));
-    req.on('error', reject);
-    if (options.body !== undefined) req.write(options.body);
-    req.end();
-  });
+  try {
+    const response = await rawHttpRequest(url, { method, headers, body: options.body, timeoutMs, proxy });
+    const body = response.body.toString('utf8');
+    let json: T | undefined;
+    try { json = body ? JSON.parse(body) as T : undefined; } catch { json = undefined; }
+    const serverRequestId = response.headers['x-request-id'] || response.headers['x-client-request-id'];
+    if (response.status < 200 || response.status >= 300) {
+      const error = new Error(compactResponseError(response.status, url.hostname, body, json));
+      logLine(`[HTTP #${requestId}] Failed · status=${response.status} · ${Date.now() - startedAt}ms · remote=${response.remoteAddress || 'unknown'}${serverRequestId ? ` · request-id=${serverRequestId}` : ''} · ${error.message}`);
+      showOutput();
+      throw error;
+    }
+    logLine(`[HTTP #${requestId}] Completed · status=${response.status} · ${Date.now() - startedAt}ms · remote=${response.remoteAddress || 'unknown'}${serverRequestId ? ` · request-id=${serverRequestId}` : ''} · ${response.body.length} bytes`);
+    return { status: response.status, headers: response.headers, body, json };
+  } catch (error) {
+    if (!(error instanceof Error) || !/^HTTP \d{3}\b/.test(error.message)) {
+      const message = error instanceof Error ? error.message : String(error);
+      logLine(`[HTTP #${requestId}] Failed · ${Date.now() - startedAt}ms · ${message}`);
+      showOutput();
+    }
+    throw error;
+  }
 }
 
 export async function getJson<T>(url: string, headers?: Record<string, string>): Promise<T> {
