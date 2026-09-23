@@ -1,21 +1,19 @@
 import * as vscode from 'vscode';
 
-/**
- * A lightweight non-notification loading indicator.
- * It uses an animated status-bar codicon so translation requests remain visible
- * without bringing back lower-right notification popups.
- */
+/** Shows request progress in the status bar and, when needed, a notification. */
 export class LoadingIndicator implements vscode.Disposable {
   private readonly item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 91);
   private readonly active = new Map<number, string>();
   private sequence = 0;
 
-  async run<T>(message: string, task: () => Promise<T>): Promise<T> {
+  async run<T>(message: string, task: () => Promise<T>, notification = false): Promise<T> {
     const id = ++this.sequence;
     this.active.set(id, message);
     this.render();
     try {
-      return await task();
+      return notification
+        ? await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: message }, task)
+        : await task();
     } finally {
       this.active.delete(id);
       this.render();

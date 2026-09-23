@@ -5,6 +5,7 @@ import { TranslationManager } from './core/manager';
 import { Secrets } from './core/secrets';
 import { TranslateRequest } from './core/types';
 import { translateDocumentText } from './features/documentTranslator';
+import { DocumentationHover } from './features/documentationHover';
 import { LoadingIndicator } from './features/loading';
 import { ResultPresentation, ResultPresenter } from './features/resultPresenter';
 import { SettingsPanel } from './features/settingsPanel';
@@ -44,6 +45,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const manager = new TranslationManager();
   registerProviders(manager, secrets);
   const presenter = new ResultPresenter(context.globalState, String(context.extension.packageJSON.version));
+  const documentationHover = new DocumentationHover((text) => manager.translate(requestFor(text, 'document')));
   const loading = new LoadingIndicator();
   presenter.setSidebarProviders(manager.listProviders().map((provider) => ({ id: provider.id, name: provider.displayName })));
   presenter.setSidebarTranslateHandler(async (text, sourceLanguage, targetLanguage, provider) => {
@@ -77,6 +79,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     presenter,
     loading,
     vscode.languages.registerHoverProvider('*', presenter),
+    vscode.languages.registerHoverProvider('*', documentationHover),
     vscode.window.registerWebviewViewProvider('polyLingo.translationView', presenter)
   );
 
@@ -100,6 +103,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   refreshStatus();
   const refreshProviderState = async () => {
     registerProviders(manager, secrets);
+    documentationHover.clearTranslations();
     presenter.setSidebarProviders(manager.listProviders().map((provider) => ({ id: provider.id, name: provider.displayName })));
     refreshStatus();
     await refreshAiAvailability();
@@ -117,7 +121,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const presentation = editorPresentation();
       if (presentation === 'hover') hoverRequestId = await presenter.showEditorLoading(editor, selection, text);
       else await presenter.clearEditorReady();
-      const result = await loading.run(t('loading.selection'), () => manager.translate(requestFor(text, 'selection')));
+      const result = await loading.run(t('loading.selection'), () => manager.translate(requestFor(text, 'selection')), presentation !== 'hover');
       if (replace) {
         await editor.edit((edit) => edit.replace(selection, result.text));
         if (hoverRequestId !== undefined) await presenter.clearEditorLoading(hoverRequestId);
@@ -133,14 +137,67 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   }
 
+  async function refreshDocumentationHover(editor: vscode.TextEditor, position: vscode.Position): Promise<void> {
+    editor.selection = new vscode.Selection(position, position);
+    try {
+      await vscode.commands.executeCommand('editor.action.hideHover');
+    } catch {
+      // VS Code versions without this internal command can show the updated state on the next hover.
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    try {
+      await vscode.commands.executeCommand('editor.action.showHover');
+    } catch {
+      // The provider state remains available if VS Code cannot reopen the hover.
+    }
+  }
+
   context.subscriptions.push(
+    vscode.commands.registerCommand('polyLingo.translateDocumentationHover', async (uriString?: string, line?: number, character?: number) => {
+      try {
+        const editor = vscode.window.activeTextEditor;
+        const document = uriString ? await vscode.workspace.openTextDocument(vscode.Uri.parse(uriString)) : editor?.document;
+        if (!document) throw new Error(t('error.noActiveEditor'));
+        const position = typeof line === 'number' && typeof character === 'number'
+          ? document.validatePosition(new vscode.Position(line, character))
+          : editor?.selection.active;
+        if (!position) throw new Error(t('error.noActiveEditor'));
+        const text = await documentationHover.getText(document, position);
+        if (!text) throw new Error(t('error.noHoverDocumentation'));
+        const targetEditor = editor?.document.uri.toString() === document.uri.toString() ? editor : undefined;
+        documentationHover.setLoading(document, position, true);
+        if (targetEditor) await refreshDocumentationHover(targetEditor, position);
+        let result;
+        try {
+          result = await loading.run(t('loading.document'), () => documentationHover.translateText(text));
+        } catch (error) {
+          documentationHover.setLoading(document, position, false);
+          if (targetEditor) await refreshDocumentationHover(targetEditor, position);
+          throw error;
+        }
+        documentationHover.setLoading(document, position, false);
+        if (getSetting<'hover' | 'sidebar'>('documentationHover.presentation', 'hover') === 'sidebar') {
+          if (targetEditor) await refreshDocumentationHover(targetEditor, position);
+          await presenter.present(result, text, 'sidebar');
+        } else {
+          documentationHover.setHoverResult(document, position, result);
+          if (!targetEditor) {
+            await presenter.present(result, text, 'sidebar');
+            return;
+          }
+          await refreshDocumentationHover(targetEditor, position);
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
+      }
+    }),
     vscode.commands.registerCommand('polyLingo.translateSelection', () => translateSelection(false)),
     vscode.commands.registerCommand('polyLingo.translateAndReplaceSelection', () => translateSelection(true)),
     vscode.commands.registerCommand('polyLingo.translateClipboard', async () => {
       try {
         const text = await vscode.env.clipboard.readText();
         if (!text.trim()) throw new Error(t('error.clipboardEmpty'));
-        const result = await loading.run(t('loading.clipboard'), () => manager.translate(requestFor(text, 'clipboard')));
+        const result = await loading.run(t('loading.clipboard'), () => manager.translate(requestFor(text, 'clipboard')), true);
         await presenter.showFloating(result, text);
       } catch (error) {
         vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
@@ -149,7 +206,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('polyLingo.translateTerminalSelection', async () => {
       try {
         const text = await readTerminalSelection();
-        const result = await loading.run(t('loading.terminal'), () => manager.translate(requestFor(text, 'terminal')));
+        const result = await loading.run(t('loading.terminal'), () => manager.translate(requestFor(text, 'terminal')), true);
         await presenter.present(result, text, terminalPresentation(), aiAvailable ? 'polyLingo.explainTerminalSelection' : undefined);
       } catch (error) {
         vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
@@ -161,7 +218,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const { editor, selection, text } = selectionText();
         const presentation = editorPresentation();
         if (presentation === 'hover') hoverRequestId = await presenter.showEditorLoading(editor, selection, text);
-        const result = await loading.run(t('loading.aiSelection'), () => manager.translateWithAI(requestFor(text, 'selection', true)));
+        const result = await loading.run(t('loading.aiSelection'), () => manager.translateWithAI(requestFor(text, 'selection', true)), presentation !== 'hover');
         if (presentation === 'hover' && hoverRequestId !== undefined) {
           await presenter.showEditor(editor, selection, result, text, hoverRequestId);
         } else {
@@ -176,7 +233,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('polyLingo.explainTerminalSelection', async () => {
       try {
         const text = await readTerminalSelection();
-        const result = await loading.run(t('loading.aiTerminal'), () => manager.translateWithAI(requestFor(text, 'terminal', true)));
+        const result = await loading.run(t('loading.aiTerminal'), () => manager.translateWithAI(requestFor(text, 'terminal', true)), true);
         await presenter.present(result, text, terminalPresentation());
       } catch (error) {
         vscode.window.showErrorMessage(`PolyLingo: ${errorMessage(error)}`);
@@ -186,7 +243,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const editor = vscode.window.activeTextEditor;
       if (!editor) return vscode.window.showErrorMessage(`PolyLingo: ${t('error.noActiveEditor')}`);
       try {
-        const translated = await loading.run(t('loading.document'), () => translateDocumentText(manager, editor.document));
+        const translated = await loading.run(t('loading.document'), () => translateDocumentText(manager, editor.document), true);
         const translatedDocument = await vscode.workspace.openTextDocument({
           content: translated,
           language: editor.document.languageId
@@ -200,7 +257,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const editor = vscode.window.activeTextEditor;
       if (!editor) return vscode.window.showErrorMessage(`PolyLingo: ${t('error.noActiveEditor')}`);
       try {
-        const translated = await loading.run(t('loading.documentInPlace'), () => translateDocumentText(manager, editor.document));
+        const translated = await loading.run(t('loading.documentInPlace'), () => translateDocumentText(manager, editor.document), true);
         const fullRange = new vscode.Range(editor.document.positionAt(0), editor.document.positionAt(editor.document.getText().length));
         await editor.edit((edit) => edit.replace(fullRange, translated));
       } catch (error) {

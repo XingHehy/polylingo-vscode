@@ -1,6 +1,7 @@
 {
   "extension.description": "개발자를 위한 다중 엔진 번역 도구입니다. 편집기 선택 영역, 문서, 터미널 출력, 공식 API, AI 및 로컬 모델을 지원합니다.",
   "command.translateSelection": "선택 영역 번역",
+  "command.translateDocumentationHover": "호버 문서 설명 번역",
   "command.translateAndReplaceSelection": "선택 영역 번역 후 교체",
   "command.translateDocument": "문서 번역 후 미리보기",
   "command.translateDocumentInPlace": "문서 번역 후 교체",
@@ -68,6 +69,9 @@
   "config.ai.prompt.description": "OpenAI Compatible 및 Ollama에서 공통으로 사용하는 내장 AI 번역 Prompt입니다. {task}, {targetLanguage}, {sourceLanguage}, {context} 자리 표시자를 지원합니다.",
   "view.translation": "번역 결과",
   "config.result.editorPresentation.description": "편집기 선택 영역 번역 결과가 표시되는 위치입니다.",
+  "config.documentationHover.presentation.description": "코드 호버의 번역 링크를 클릭한 뒤 번역을 표시할 위치입니다. 두 모드 모두 클릭해야 번역합니다.",
+  "config.documentationHover.presentation.hover": "클릭 후 호버 안에 번역 표시",
+  "config.documentationHover.presentation.sidebar": "호버 링크를 클릭해 PolyLingo 사이드바에 표시",
   "config.result.terminalPresentation.description": "터미널 번역 결과가 표시되는 위치입니다.",
   "config.result.presentation.hover": "선택 영역 근처 Hover",
   "config.result.presentation.sidebar": "PolyLingo 사이드바",

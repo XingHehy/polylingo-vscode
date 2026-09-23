@@ -33,6 +33,7 @@
   ],
   "activationEvents": [
     "onCommand:polyLingo.translateSelection",
+    "onCommand:polyLingo.translateDocumentationHover",
     "onCommand:polyLingo.translateAndReplaceSelection",
     "onCommand:polyLingo.translateDocument",
     "onCommand:polyLingo.translateDocumentInPlace",
@@ -90,6 +91,11 @@
       ]
     },
     "commands": [
+      {
+        "command": "polyLingo.translateDocumentationHover",
+        "title": "%command.translateDocumentationHover%",
+        "category": "PolyLingo"
+      },
       {
         "command": "polyLingo.translateSelection",
         "title": "%command.translateSelection%",
@@ -253,6 +259,9 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "polyLingo.translateDocumentationHover"
+        },
         {
           "command": "polyLingo.translateSelection"
         },
@@ -446,6 +455,19 @@
             "%config.document.mode.whole%"
           ],
           "description": "%config.document.mode.description%"
+        },
+        "polyLingo.documentationHover.presentation": {
+          "type": "string",
+          "default": "hover",
+          "enum": [
+            "hover",
+            "sidebar"
+          ],
+          "enumDescriptions": [
+            "%config.documentationHover.presentation.hover%",
+            "%config.documentationHover.presentation.sidebar%"
+          ],
+          "description": "%config.documentationHover.presentation.description%"
         },
         "polyLingo.selection.autoTranslate": {
           "type": "boolean",

@@ -3,6 +3,10 @@
 All notable changes to PolyLingo will be documented in this file.
 
 ## 0.1.4
+
+- Added click-to-translate for code documentation hovers, with a choice to show the translation in the hover or PolyLingo sidebar.
+- Added visible loading indicators to documentation and selection hovers, sidebar translation controls, and provider actions in settings; translation commands without an inline result show progress notifications.
+- Added a per-engine request timeout under Advanced settings; when unset, it inherits the global timeout.
 - Kept HTTP failures in the log without automatically opening the Output panel during provider fallback.
 
 ## 0.1.3

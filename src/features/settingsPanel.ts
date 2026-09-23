@@ -46,6 +46,10 @@ interface PanelStrings {
   autoTranslateHelp: string;
   editorPresentation: string;
   terminalPresentation: string;
+  documentationHoverPresentation: string;
+  documentationHoverHelp: string;
+  documentationHoverHover: string;
+  documentationHoverSidebar: string;
   presentationHover: string;
   presentationSidebar: string;
   presentationNotification: string;
@@ -60,6 +64,8 @@ interface PanelStrings {
   providerProxyDisabled: string;
   providerProxyUrl: string;
   providerProxyHelp: string;
+  providerTimeout: string;
+  providerTimeoutHelp: string;
   enabled: string;
   disabled: string;
   enableHint: string;
@@ -123,12 +129,16 @@ const en: PanelStrings = {
   defaultProviderHelp: 'Auto tries enabled engines from top to bottom in the list.', auto: 'Auto',
   autoTranslate: 'Translate automatically in selection hover', autoTranslateHelp: 'Off: show a Translate button in the hover. On: start translating automatically.',
   editorPresentation: 'Editor result location', terminalPresentation: 'Terminal result location',
+  documentationHoverPresentation: 'Code documentation hover translation',
+  documentationHoverHelp: 'Click Translate this document in the code hover for either result location.',
+  documentationHoverHover: 'Show translation in the hover', documentationHoverSidebar: 'Show translation in the sidebar',
   presentationHover: 'Hover near selection', presentationSidebar: 'PolyLingo sidebar',
   presentationNotification: 'Bottom-right notification', presentationEditor: 'Editor beside current editor',
   proxy: 'Default proxy URL', proxyHelp: 'When enabled, leave empty to use VS Code http.proxy, environment variables, or the operating system proxy.',
   proxyEnabled: 'Enable proxy by default', proxyEnabledHelp: 'Individual engine proxy settings override this default.',
   providerProxyMode: 'Proxy policy', providerProxyInherit: 'Follow default', providerProxyEnabled: 'Enable for this engine', providerProxyDisabled: 'Disable for this engine',
   providerProxyUrl: 'Engine proxy URL', providerProxyHelp: 'Used when this engine enables proxy. Leave empty to use the default, VS Code, environment, or operating system proxy URL.',
+  providerTimeout: 'Engine request timeout (ms)', providerTimeoutHelp: 'Leave empty to use the global timeout. Range: 1000–600000 ms.',
   enabled: 'Enabled', disabled: 'Disabled', enableHint: 'Enable this engine to configure it.',
   free: 'Free', official: 'Official API', ai: 'AI', selfHosted: 'Self-hosted', endpoint: 'Endpoint', baseUrl: 'Base URL',
   email: 'Email', region: 'Region', model: 'Model', temperature: 'Temperature', extraHeaders: 'Extra headers (JSON)', advancedSettings: 'Advanced', loadModels: 'Load models', loadingModels: 'Loading models…', modelLoadFailed: 'Unable to load models',
@@ -167,12 +177,16 @@ const zhCN: PanelStrings = {
   defaultProviderHelp: '选择“自动”时，会从上到下尝试已启用的翻译引擎。', auto: '自动',
   autoTranslate: '划词浮窗自动翻译', autoTranslateHelp: '关闭时显示“翻译”按钮，点击后才翻译；开启时自动翻译。',
   editorPresentation: '编辑器译文显示位置', terminalPresentation: '终端译文显示位置',
+  documentationHoverPresentation: '代码悬停文档译文位置',
+  documentationHoverHelp: '两种模式都在代码浮窗中点击“翻译此文档”后才翻译。',
+  documentationHoverHover: '浮窗内直接显示', documentationHoverSidebar: 'PolyLingo 侧边栏',
   presentationHover: '选区附近浮窗', presentationSidebar: 'PolyLingo 侧边栏',
   presentationNotification: '右下角通知', presentationEditor: '编辑器分栏',
   proxy: '默认代理地址', proxyHelp: '启用代理后，留空会使用 VS Code http.proxy、系统环境变量或操作系统代理。',
   proxyEnabled: '默认启用代理', proxyEnabledHelp: '每个翻译引擎的代理设置优先于这里的默认值。',
   providerProxyMode: '代理策略', providerProxyInherit: '跟随默认设置', providerProxyEnabled: '为此引擎启用', providerProxyDisabled: '为此引擎禁用',
   providerProxyUrl: '引擎代理地址', providerProxyHelp: '此引擎单独启用代理时使用；留空会使用默认、VS Code、环境变量或操作系统代理地址。',
+  providerTimeout: '此引擎请求超时（毫秒）', providerTimeoutHelp: '留空沿用全局超时；可设置 1000–600000 毫秒。',
   enabled: '已启用', disabled: '未启用', enableHint: '勾选启用后才显示这个引擎的配置。',
   free: '免费', official: '官方 API', ai: 'AI', selfHosted: '自托管', endpoint: '接口地址', baseUrl: 'Base URL',
   email: '邮箱', region: '区域', model: '模型', temperature: 'Temperature', extraHeaders: '额外请求头（JSON）', advancedSettings: '高级', loadModels: '获取模型', loadingModels: '正在获取模型…', modelLoadFailed: '获取模型失败',
@@ -209,8 +223,11 @@ const zhTW: PanelStrings = {
   defaultProvider: '預設翻譯引擎', defaultProviderHelp: '選擇「自動」時，會由上而下嘗試已啟用的翻譯引擎。', auto: '自動',
   autoTranslate: '選取浮窗自動翻譯', autoTranslateHelp: '關閉時顯示「翻譯」按鈕；開啟時自動翻譯。', debounceMs: '選取浮窗延遲（毫秒）', proxy: '代理伺服器',
   editorPresentation: '編輯器譯文顯示位置', terminalPresentation: '終端機譯文顯示位置', presentationHover: '選取範圍附近浮窗',
+  documentationHoverPresentation: '程式碼懸停文件譯文位置', documentationHoverHelp: '兩種模式都需點擊程式碼浮窗中的「翻譯此文件」才會翻譯。',
+  documentationHoverHover: '直接顯示在浮窗內', documentationHoverSidebar: 'PolyLingo 側邊欄',
   presentationSidebar: 'PolyLingo 側邊欄', presentationNotification: '右下角通知', presentationEditor: '編輯器分欄',
   proxyHelp: '留空時繼承 VS Code http.proxy 或系統環境變數中的代理。', enabled: '已啟用', disabled: '未啟用',
+  providerTimeout: '此引擎請求逾時（毫秒）', providerTimeoutHelp: '留空沿用全域逾時；可設定 1000–600000 毫秒。',
   enableHint: '勾選啟用後才顯示這個引擎的設定。', advancedSettings: '進階', loadModels: '取得模型', loadingModels: '正在取得模型…', modelLoadFailed: '取得模型失敗', nativeSettings: '開啟 VS Code 原生設定', saved: '已儲存', saving: '儲存中…', error: '儲存失敗', testProvider: '測試', testingProvider: '測試中…', providerAvailable: '可用', providerUnavailable: '不可用', aiPromptTitle: 'AI 翻譯 Prompt', aiPromptDescription: '僅用於目前引擎，可自行編輯。', resetPrompt: '還原預設 Prompt', feedback: '意見回饋', version: '版本'
 };
 
@@ -224,7 +241,10 @@ const ja: PanelStrings = {
   defaultProvider: '既定の翻訳エンジン', defaultProviderHelp: '自動では、有効なエンジンを一覧の上から順に試します。', auto: '自動',
   autoTranslate: '選択時の Hover で自動翻訳', autoTranslateHelp: 'オフでは翻訳ボタンを表示し、オンでは自動翻訳します。', debounceMs: '選択 Hover の遅延（ms）', proxy: 'プロキシ',
   editorPresentation: 'エディター結果の表示場所', terminalPresentation: 'ターミナル結果の表示場所', presentationHover: '選択範囲付近の Hover',
+  documentationHoverPresentation: 'コードホバードキュメントの翻訳先', documentationHoverHelp: 'どちらの表示先でもホバーの翻訳リンクをクリックして翻訳します。',
+  documentationHoverHover: 'ホバー内に表示', documentationHoverSidebar: 'PolyLingo サイドバーに表示',
   presentationSidebar: 'PolyLingo サイドバー', presentationNotification: '右下の通知', presentationEditor: 'エディター分割',
+  providerTimeout: 'エンジンのリクエストタイムアウト（ms）', providerTimeoutHelp: '空欄なら全体設定を使用します。1000～600000 ms。',
   enabled: '有効', disabled: '無効', enableHint: '有効にするとこのエンジンの設定が表示されます。', free: '無料', official: '公式 API', ai: 'AI',
   selfHosted: 'セルフホスト', advancedSettings: '詳細設定', loadModels: 'モデルを取得', loadingModels: 'モデルを取得中…', modelLoadFailed: 'モデルを取得できませんでした', nativeSettings: 'VS Code の標準設定を開く', saved: '保存しました', saving: '保存中…', error: '保存できませんでした', testProvider: 'テスト', testingProvider: 'テスト中…', providerAvailable: '利用可能', providerUnavailable: '利用不可', aiPromptTitle: 'AI 翻訳 Prompt', aiPromptDescription: 'このエンジンだけに適用される Prompt です。', resetPrompt: '既定の Prompt に戻す', feedback: 'フィードバック', version: 'バージョン'
 };
@@ -239,7 +259,10 @@ const ko: PanelStrings = {
   defaultProvider: '기본 번역 엔진', defaultProviderHelp: '자동 모드에서는 활성화된 엔진을 목록 위에서부터 시도합니다.', auto: '자동',
   autoTranslate: '선택 Hover 자동 번역', autoTranslateHelp: '끄면 번역 버튼을 표시하고, 켜면 자동으로 번역합니다.', debounceMs: '선택 Hover 지연 (ms)', proxy: '프록시',
   editorPresentation: '편집기 결과 위치', terminalPresentation: '터미널 결과 위치', presentationHover: '선택 영역 근처 Hover',
+  documentationHoverPresentation: '코드 호버 문서 번역 위치', documentationHoverHelp: '두 표시 모드 모두 호버의 번역 링크를 클릭해야 번역합니다.',
+  documentationHoverHover: '호버 안에 표시', documentationHoverSidebar: 'PolyLingo 사이드바에 표시',
   presentationSidebar: 'PolyLingo 사이드바', presentationNotification: '오른쪽 아래 알림', presentationEditor: '편집기 분할',
+  providerTimeout: '엔진 요청 제한 시간 (ms)', providerTimeoutHelp: '비워 두면 전역 제한 시간을 사용합니다. 1000~600000 ms.',
   enabled: '활성', disabled: '비활성', enableHint: '활성화하면 이 엔진의 설정이 표시됩니다.', free: '무료', official: '공식 API', ai: 'AI',
   selfHosted: '셀프 호스팅', advancedSettings: '고급', loadModels: '모델 가져오기', loadingModels: '모델 가져오는 중…', modelLoadFailed: '모델을 가져오지 못했습니다', nativeSettings: 'VS Code 기본 설정 열기', saved: '저장됨', saving: '저장 중…', error: '저장 실패', testProvider: '테스트', testingProvider: '테스트 중…', providerAvailable: '사용 가능', providerUnavailable: '사용 불가', aiPromptTitle: 'AI 번역 Prompt', aiPromptDescription: '이 엔진에만 적용되는 Prompt입니다.', resetPrompt: '기본 Prompt 복원', feedback: '피드백', version: '버전'
 };
@@ -292,6 +315,7 @@ const ADDABLE_PROVIDERS = PROVIDERS.filter((provider) => provider.id !== 'google
 const SETTING_DEFAULTS: Record<string, unknown> = {
   'ui.language': 'auto', provider: 'auto', sourceLanguage: 'auto', targetLanguage: 'zh-CN', 'proxy.enabled': false, proxy: '', requestTimeoutMs: 15000,
   maxSelectionChars: 12000, 'document.chunkChars': 3500, 'document.mode': 'smart', 'selection.autoTranslate': false,
+  'documentationHover.presentation': 'hover',
   'selection.debounceMs': 650, 'result.showOutputChannel': false, 'result.editorPresentation': 'hover', 'result.terminalPresentation': 'sidebar',
   'googleFree.endpoint': 'https://translate.googleapis.com/translate_a/single',
   'bingWeb.endpoint': 'https://www.bing.com/translator', 'mymemory.email': '', 'libreTranslate.baseUrl': 'http://127.0.0.1:5000',
@@ -363,6 +387,12 @@ function providerProxyHtml(instance: ProviderInstance, s: PanelStrings): string 
     <label class="field"><span>${escapeHtml(s.providerProxyUrl)}</span><input data-instance-setting="proxy.url" data-instance-id="${escapeHtml(instance.id)}" data-value-type="text" value="${escapeHtml(url)}" placeholder="http://127.0.0.1:7890"></label>`;
 }
 
+function providerTimeoutHtml(instance: ProviderInstance, s: PanelStrings): string {
+  const own = instance.settings['requestTimeoutMs'];
+  const value = typeof own === 'number' && Number.isInteger(own) ? String(own) : '';
+  return `<label class="field"><span>${escapeHtml(s.providerTimeout)}</span><input type="number" min="1000" max="600000" step="1000" data-instance-setting="requestTimeoutMs" data-instance-id="${escapeHtml(instance.id)}" data-value-type="text" value="${escapeHtml(value)}" placeholder="${escapeHtml(getSetting('requestTimeoutMs', 15000))}"><small>${escapeHtml(s.providerTimeoutHelp)}</small></label>`;
+}
+
 function providerCard(def: ProviderDefinition, instance: ProviderInstance, s: PanelStrings): string {
   const enabled = instance.enabled;
   return `<section class="provider-card ${enabled ? 'enabled' : ''}" data-provider-card="${escapeHtml(instance.id)}" data-provider-name="${escapeHtml(def.name)}" data-provider-kind="${escapeHtml(instance.kind)}">
@@ -385,7 +415,8 @@ function providerCard(def: ProviderDefinition, instance: ProviderInstance, s: Pa
 function providerEditor(def: ProviderDefinition, instance: ProviderInstance, secretState: Record<string, boolean>, s: PanelStrings): string {
   const advancedKeys = new Set(instance.kind === 'openai-compatible' ? ['openAI.temperature', 'openAI.extraHeaders'] : []);
   const fields = def.fields.filter((field) => !advancedKeys.has(field.key)).map((field) => fieldHtml(field, instance, s)).join('');
-  const advancedFields = providerProxyHtml(instance, s) + def.fields.filter((field) => advancedKeys.has(field.key)).map((field) => fieldHtml(field, instance, s)).join('');
+  const advancedFields = providerProxyHtml(instance, s) + providerTimeoutHtml(instance, s)
+    + def.fields.filter((field) => advancedKeys.has(field.key)).map((field) => fieldHtml(field, instance, s)).join('');
   const secrets = (def.secrets || []).map((field) => secretHtml(field, Boolean(secretState[`${instance.id}:${field.name}`]), instance, s)).join('');
   const isAi = instance.kind === 'openai-compatible' || instance.kind === 'ollama';
   const prompt = typeof instance.settings['ai.prompt'] === 'string' ? instance.settings['ai.prompt'] : DEFAULT_AI_PROMPT;
@@ -542,6 +573,16 @@ export class SettingsPanel implements vscode.Disposable {
         resolveProviderProxy(instance, { ...instance.settings, 'proxy.mode': proxyMode, 'proxy.url': proxyUrl });
         instance.settings['proxy.mode'] = proxyMode;
         instance.settings['proxy.url'] = proxyUrl;
+        const timeoutText = String(draft['requestTimeoutMs'] ?? '').trim();
+        if (timeoutText) {
+          const timeout = Number(timeoutText);
+          if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 600000) {
+            throw new Error('Engine request timeout must be between 1000 and 600000 ms.');
+          }
+          instance.settings['requestTimeoutMs'] = timeout;
+        } else {
+          delete instance.settings['requestTimeoutMs'];
+        }
         if ((instance.kind === 'openai-compatible' || instance.kind === 'ollama') && typeof draft['ai.prompt'] === 'string') {
           instance.settings['ai.prompt'] = draft['ai.prompt'];
         }
@@ -650,6 +691,9 @@ export class SettingsPanel implements vscode.Disposable {
         if (key === 'result.terminalPresentation' && !['sidebar', 'notification', 'editor'].includes(String(value))) {
           throw new Error('Invalid terminal result location.');
         }
+        if (key === 'documentationHover.presentation' && !['hover', 'sidebar'].includes(String(value))) {
+          throw new Error('Invalid documentation hover result location.');
+        }
         await setGlobalSetting(key, value);
         this.post({ type: 'saved', setting: key });
         if (key === 'ui.language') await this.render();
@@ -736,12 +780,16 @@ export class SettingsPanel implements vscode.Disposable {
     const docMode = String(configValue('document.mode'));
     const editorPresentation = String(configValue('result.editorPresentation'));
     const terminalPresentation = String(configValue('result.terminalPresentation'));
+    const documentationHoverPresentation = String(configValue('documentationHover.presentation'));
     const editorPresentationOptions = [
       ['hover', s.presentationHover], ['sidebar', s.presentationSidebar], ['notification', s.presentationNotification], ['editor', s.presentationEditor]
     ].map(([value, label]) => option(value, label, editorPresentation)).join('');
     const terminalPresentationOptions = [
       ['sidebar', s.presentationSidebar], ['notification', s.presentationNotification], ['editor', s.presentationEditor]
     ].map(([value, label]) => option(value, label, terminalPresentation)).join('');
+    const documentationHoverOptions = [
+      ['hover', s.documentationHoverHover], ['sidebar', s.documentationHoverSidebar]
+    ].map(([value, label]) => option(value, label, documentationHoverPresentation)).join('');
     return `<!DOCTYPE html>
 <html lang="${escapeHtml(getUiLanguage())}">
 <head>
@@ -800,6 +848,9 @@ export class SettingsPanel implements vscode.Disposable {
   @keyframes drawer-in { from { transform: translateY(18px); opacity: .7; } to { transform: translateY(0); opacity: 1; } }
   .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 18px; padding-top: 14px; }
   .provider-test-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  @keyframes polyLingoSpin { to { transform: rotate(360deg); } }
+  [data-test-provider]:disabled::before, [data-load-models]:disabled::before { content: '⟳'; display: inline-block; margin-right: 6px; animation: polyLingoSpin 1s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { [data-test-provider]:disabled::before, [data-load-models]:disabled::before { animation: none; } }
   .test-status { min-width: 0; overflow-wrap: anywhere; }
   .test-status.ok { color: var(--vscode-testing-iconPassed, #2ea043); }
   .test-status.fail { color: var(--vscode-testing-iconFailed, var(--vscode-errorForeground)); }
@@ -853,6 +904,7 @@ export class SettingsPanel implements vscode.Disposable {
       <label class="field"><span>${escapeHtml(s.autoTranslate)}</span><span class="check-row"><input type="checkbox" data-setting="selection.autoTranslate" data-value-type="boolean" ${autoTranslate ? 'checked' : ''}><span class="help">${escapeHtml(s.autoTranslateHelp)}</span></span></label>
       <label class="field"><span>${escapeHtml(s.editorPresentation)}</span><select data-setting="result.editorPresentation" data-value-type="text">${editorPresentationOptions}</select></label>
       <label class="field"><span>${escapeHtml(s.terminalPresentation)}</span><select data-setting="result.terminalPresentation" data-value-type="text">${terminalPresentationOptions}</select></label>
+      <label class="field"><span>${escapeHtml(s.documentationHoverPresentation)}</span><select data-setting="documentationHover.presentation" data-value-type="text">${documentationHoverOptions}</select><small>${escapeHtml(s.documentationHoverHelp)}</small></label>
     </div>
   </section>
 

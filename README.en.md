@@ -10,6 +10,7 @@ Translate text directly in editors, terminals, and technical documentation, or u
 
 - **Translate editor selections**: Selecting text opens a hover; click Translate to send the request, then copy or replace the result.
 - **Automatic selection translation**: Optionally start translating in the hover as soon as the selection settles.
+- **Documentation hover translation**: Show function, class, or module description translations directly in the hover or in the sidebar without selecting or copying text.
 - **Terminal translation**: Translate command output, errors, and logs.
 - **Document translation**: Supports Markdown, plain text, and source-code comments; Smart mode protects code blocks.
 - **AI translation and explanation**: Understand technical content through an OpenAI-compatible service or Ollama.
@@ -49,6 +50,12 @@ Default shortcuts:
 | Windows / Linux | `Ctrl + Alt + T` |
 
 To translate without clicking, enable **Translate automatically in selection hover** on the settings page.
+
+To translate a function, class, or module description, hover over its code symbol and click **Translate this document**. PolyLingo Settings lets you show the result in the original hover or the PolyLingo sidebar. Both modes start translating only after the click. Code signatures and fenced code blocks are excluded from the translation request. You can also place the editor cursor on the symbol and run **PolyLingo: Translate Hover Documentation** from the Command Palette.
+
+After the click, the hover action shows a spinning translation indicator. Selection hovers and the sidebar Translate button also show progress during requests. Translations started from the Command Palette or terminal display a progress notification.
+
+VS Code merges hover contents from different extensions. PolyLingo can only add a translation outside the original documentation section; it cannot edit Pylance's original text or insert translated lines between its lines.
 
 ## Translation Results
 
@@ -148,6 +155,10 @@ When proxying is enabled and its URL is empty, the URL is resolved in this order
 2. VS Code `http.proxy`
 3. The `HTTPS_PROXY` or `HTTP_PROXY` environment variable
 4. The operating system proxy (macOS, Windows, or Linux GNOME)
+
+### Request timeout
+
+The global **Request timeout** defaults to 15000 ms. Each engine's **Advanced** section can override it with an **Engine request timeout** of 1000–600000 ms. Leave the field empty to inherit the global value; use a longer value for engines handling large documents.
 
 ### API Keys
 

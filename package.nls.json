@@ -1,6 +1,7 @@
 {
   "extension.description": "Multi-engine translation for developers: editor selections, documents, terminal output, official APIs, AI and local models.",
   "command.translateSelection": "Translate Selection",
+  "command.translateDocumentationHover": "Translate Hover Documentation",
   "command.translateAndReplaceSelection": "Translate and Replace Selection",
   "command.translateDocument": "Translate Document to Preview",
   "command.translateDocumentInPlace": "Translate Document In Place",
@@ -68,6 +69,9 @@
   "config.ai.prompt.description": "Built-in AI translation prompt shared by OpenAI Compatible and Ollama. Supports {task}, {targetLanguage}, {sourceLanguage}, and {context} placeholders.",
   "view.translation": "Translation",
   "config.result.editorPresentation.description": "Where editor selection translation results are displayed.",
+  "config.documentationHover.presentation.description": "Where code documentation translations appear after clicking Translate this document in the hover.",
+  "config.documentationHover.presentation.hover": "Click in the hover to show the translation there",
+  "config.documentationHover.presentation.sidebar": "Click in the hover to show the translation in the PolyLingo sidebar",
   "config.result.terminalPresentation.description": "Where terminal translation results are displayed.",
   "config.result.presentation.hover": "Hover near the editor selection",
   "config.result.presentation.sidebar": "PolyLingo sidebar",

@@ -106,7 +106,11 @@ export function getTargetLanguage(): string {
 }
 
 export function getTimeout(): number {
-  return config().get<number>('requestTimeoutMs', 15000);
+  const globalTimeout = config().get<number>('requestTimeoutMs', 15000);
+  const own = currentProviderInstance()?.settings['requestTimeoutMs'];
+  return typeof own === 'number' && Number.isInteger(own) && own >= 1000 && own <= 600000
+    ? own
+    : globalTimeout;
 }
 
 let cachedSystemProxy: { value: string | undefined; expiresAt: number } | undefined;

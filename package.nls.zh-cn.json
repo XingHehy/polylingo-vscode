@@ -1,6 +1,7 @@
 {
   "extension.description": "面向开发者的多引擎翻译工具：支持编辑器选区、文档、终端输出、官方 API、AI 与本地模型。",
   "command.translateSelection": "翻译选中内容",
+  "command.translateDocumentationHover": "翻译悬停文档说明",
   "command.translateAndReplaceSelection": "翻译并替换选中内容",
   "command.translateDocument": "翻译文档并预览",
   "command.translateDocumentInPlace": "翻译并替换当前文档",
@@ -68,6 +69,9 @@
   "config.ai.prompt.description": "OpenAI Compatible 与 Ollama 共用的内置 AI 翻译 Prompt。支持 {task}、{targetLanguage}、{sourceLanguage}、{context} 占位符。",
   "view.translation": "翻译结果",
   "config.result.editorPresentation.description": "编辑器划词翻译结果的显示位置。",
+  "config.documentationHover.presentation.description": "点击代码浮窗中的“翻译此文档”后，译文的显示位置。两种模式都需要点击才翻译。",
+  "config.documentationHover.presentation.hover": "点击后在浮窗内显示译文",
+  "config.documentationHover.presentation.sidebar": "点击浮窗入口后在 PolyLingo 侧边栏显示译文",
   "config.result.terminalPresentation.description": "终端翻译结果的显示位置。",
   "config.result.presentation.hover": "选区附近浮窗",
   "config.result.presentation.sidebar": "PolyLingo 侧边栏",

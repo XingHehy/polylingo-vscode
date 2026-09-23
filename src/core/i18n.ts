@@ -17,6 +17,7 @@ type MessageKey =
   | 'error.selectTextFirst'
   | 'error.selectionTooLarge'
   | 'error.clipboardEmpty'
+  | 'error.noHoverDocumentation'
   | 'error.proxyNotDetected'
   | 'sidebar.input'
   | 'sidebar.inputPlaceholder'
@@ -37,6 +38,7 @@ type MessageKey =
   | 'hover.replace'
   | 'hover.explain'
   | 'hover.output'
+  | 'hover.translateDocumentation'
   | 'floating.copy'
   | 'floating.copyDetail'
   | 'floating.output'
@@ -107,6 +109,8 @@ const en: Messages = {
   'hover.replace': 'Replace original',
   'hover.explain': 'AI translate & explain',
   'hover.output': 'Output panel',
+  'hover.translateDocumentation': 'Translate this document',
+  'error.noHoverDocumentation': 'No documentation hover found at the cursor.',
   'floating.copy': 'Copy translation',
   'floating.copyDetail': 'Copy the full translation to the clipboard',
   'floating.output': 'Show in PolyLingo Output',
@@ -176,6 +180,8 @@ const zhCN: Messages = {
   'hover.replace': '替换原文',
   'hover.explain': 'AI 翻译并解释',
   'hover.output': '输出面板',
+  'hover.translateDocumentation': '翻译此文档',
+  'error.noHoverDocumentation': '光标处没有可翻译的悬停文档说明。',
   'floating.copy': '复制译文',
   'floating.copyDetail': '将完整译文复制到剪贴板',
   'floating.output': '在 PolyLingo 输出中查看',
@@ -245,6 +251,8 @@ const zhTW: Messages = {
   'hover.replace': '取代原文',
   'hover.explain': 'AI 翻譯並解釋',
   'hover.output': '輸出面板',
+  'hover.translateDocumentation': '翻譯此文件',
+  'error.noHoverDocumentation': '游標處沒有可翻譯的懸停文件說明。',
   'floating.copy': '複製譯文',
   'floating.copyDetail': '將完整譯文複製到剪貼簿',
   'floating.output': '在 PolyLingo 輸出中檢視',
@@ -300,6 +308,8 @@ const ja: Messages = {
   'hover.replace': '原文を置換',
   'hover.explain': 'AI 翻訳・解説',
   'hover.output': '出力パネル',
+  'hover.translateDocumentation': 'このドキュメントを翻訳',
+  'error.noHoverDocumentation': 'カーソル位置に翻訳できるドキュメントはありません。',
   'provider.auto': '自動',
   'provider.autoDescription': 'フォールバック順で利用可能なプロバイダーを使用',
   'provider.current': '現在の翻訳プロバイダー：{provider}',
@@ -344,6 +354,8 @@ const ko: Messages = {
   'hover.replace': '원문 교체',
   'hover.explain': 'AI 번역 및 설명',
   'hover.output': '출력 패널',
+  'hover.translateDocumentation': '이 문서 번역',
+  'error.noHoverDocumentation': '커서 위치에 번역할 문서 설명이 없습니다.',
   'provider.auto': '자동',
   'provider.autoDescription': '대체 순서에 따라 사용 가능한 공급자 사용',
   'provider.current': '현재 번역 공급자: {provider}',

@@ -1,6 +1,7 @@
 {
   "extension.description": "開発者向けマルチエンジン翻訳ツール。エディター選択範囲、ドキュメント、ターミナル出力、公式 API、AI、ローカルモデルに対応します。",
   "command.translateSelection": "選択範囲を翻訳",
+  "command.translateDocumentationHover": "ホバーのドキュメントを翻訳",
   "command.translateAndReplaceSelection": "選択範囲を翻訳して置換",
   "command.translateDocument": "ドキュメントを翻訳してプレビュー",
   "command.translateDocumentInPlace": "ドキュメントを翻訳して置換",
@@ -68,6 +69,9 @@
   "config.ai.prompt.description": "OpenAI Compatible と Ollama で共通利用する組み込み AI 翻訳 Prompt。{task}、{targetLanguage}、{sourceLanguage}、{context} プレースホルダーに対応します。",
   "view.translation": "翻訳結果",
   "config.result.editorPresentation.description": "エディター選択範囲の翻訳結果を表示する場所。",
+  "config.documentationHover.presentation.description": "コードのホバー内の翻訳リンクをクリックした後の表示場所です。どちらもクリックするまで翻訳しません。",
+  "config.documentationHover.presentation.hover": "クリック後にホバー内へ翻訳を表示",
+  "config.documentationHover.presentation.sidebar": "ホバーのリンクをクリックして PolyLingo サイドバーに表示",
   "config.result.terminalPresentation.description": "ターミナル翻訳結果を表示する場所。",
   "config.result.presentation.hover": "選択範囲付近の Hover",
   "config.result.presentation.sidebar": "PolyLingo サイドバー",
